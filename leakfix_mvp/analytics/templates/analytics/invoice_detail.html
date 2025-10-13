@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Invoice Details</h2>
+<p><strong>Period:</strong> {{ invoice.period_start }} – {{ invoice.period_end }}</p>
+<p><strong>Retained Revenue:</strong> ${{ invoice.retained_revenue|floatformat:2 }}</p>
+<p><strong>Fee Rate:</strong> {{ invoice.fee_rate|floatformat:2 }}</p>
+<p><strong>Amount Due:</strong> ${{ invoice.amount_due|floatformat:2 }}</p>
+<p><strong>Status:</strong> {% if invoice.is_paid %}Paid{% else %}Unpaid{% endif %}</p>
+<p><strong>Generated On:</strong> {{ invoice.created_at }}</p>
+{% endblock %}

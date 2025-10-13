@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+
+<h2>
+  {% if metric == 'in_network_rate' %}
+    In‑network Rate
+  {% elif metric == 'completion_rate' %}
+    Completion Rate
+  {% elif metric == 'leakage_cost' %}
+    Leakage Cost
+  {% elif metric == 'retained_revenue' %}
+    Retained Revenue
+  {% elif metric == 'referral_volume' %}
+    Referral Volume
+  {% elif metric == 'avg_leakage_cost' %}
+    Average Leakage Cost
+  {% endif %}
+  (Past 12 Months)
+</h2>
+
+<canvas id="metricChart" width="800" height="400"></canvas>
+
+{# Embed labels and values safely as JSON #}
+{{ labels|json_script:"labels-data" }}
+{{ values|json_script:"values-data" }}
+
+<!-- Load Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Parse the embedded JSON data
+const labels = JSON.parse(document.getElementById('labels-data').textContent);
+const values = JSON.parse(document.getElementById('values-data').textContent);
+const metric = "{{ metric }}";
+
+// Determine chart label and axis label
+let datasetLabel = '';
+let yAxisLabel = '';
+if (metric === 'in_network_rate') {
+  datasetLabel = 'In‑network Rate';
+  yAxisLabel = 'Percentage (%)';
+} else if (metric === 'completion_rate') {
+  datasetLabel = 'Completion Rate';
+  yAxisLabel = 'Percentage (%)';
+} else if (metric === 'leakage_cost') {
+  datasetLabel = 'Leakage Cost';
+  yAxisLabel = 'Dollars ($)';
+} else if (metric === 'retained_revenue') {
+  datasetLabel = 'Retained Revenue';
+  yAxisLabel = 'Dollars ($)';
+} else if (metric === 'referral_volume') {
+  datasetLabel = 'Referral Volume';
+  yAxisLabel = 'Count';
+} else if (metric === 'avg_leakage_cost') {
+  datasetLabel = 'Average Leakage Cost';
+  yAxisLabel = 'Dollars ($)';
+}
+
+const ctx = document.getElementById('metricChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: datasetLabel,
+      data: values,
+      borderColor: '#0d6efd',
+      backgroundColor: 'rgba(13, 110, 253, 0.1)',
+      fill: true,
+      tension: 0.3
+    }]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Month'
+        }
+      },
+      y: {
+        title: {
+          display: true,
+          text: yAxisLabel
+        },
+        beginAtZero: true
+      }
+    }
+  }
+});
+</script>
+
+<hr>
+
+{# Descriptive text based on metric #}
+<p class="metric-description">
+  {% if metric == 'in_network_rate' %}
+    The <strong>in‑network rate</strong> represents the percentage of referrals sent to providers within your network.  Higher values indicate better patient retention and lower leakage.
+  {% elif metric == 'completion_rate' %}
+    The <strong>completion rate</strong> measures the percentage of referrals that reach the <em>Completed</em> status.  It reflects how many referred patients actually receive the service.
+  {% elif metric == 'leakage_cost' %}
+    The <strong>leakage cost</strong> estimates the total revenue lost from referrals that were sent out of network.  Lower values mean less financial leakage.
+  {% elif metric == 'retained_revenue' %}
+    <strong>Retained revenue</strong> estimates the revenue kept within your organization by referring patients to in‑network providers.  Higher values represent more revenue preserved.
+  {% elif metric == 'referral_volume' %}
+    <strong>Referral volume</strong> shows the number of referrals created each month.  Tracking this trend helps you see overall demand and identify seasonal patterns.
+  {% elif metric == 'avg_leakage_cost' %}
+    The <strong>average leakage cost</strong> measures the average cost per out‑of‑network referral.  A rising value may signal higher individual leakage costs.
+  {% endif %}
+</p>
+
+<ul>
+  <li><strong>Current value (latest month):</strong>
+    {% if metric == 'in_network_rate' or metric == 'completion_rate' %}
+      {{ latest_value|floatformat:2 }}%
+    {% elif metric == 'referral_volume' %}
+      {{ latest_value|floatformat:0 }}
+    {% else %}
+      ${{ latest_value|floatformat:2 }}
+    {% endif %}
+  </li>
+  <li><strong>Average (past 12 months):</strong>
+    {% if metric == 'in_network_rate' or metric == 'completion_rate' %}
+      {{ avg_value|floatformat:2 }}%
+    {% elif metric == 'referral_volume' %}
+      {{ avg_value|floatformat:0 }}
+    {% else %}
+      ${{ avg_value|floatformat:2 }}
+    {% endif %}
+  </li>
+  <li><strong>Maximum:</strong>
+    {% if metric == 'in_network_rate' or metric == 'completion_rate' %}
+      {{ max_value|floatformat:2 }}%
+    {% elif metric == 'referral_volume' %}
+      {{ max_value|floatformat:0 }}
+    {% else %}
+      ${{ max_value|floatformat:2 }}
+    {% endif %}
+  </li>
+  <li><strong>Minimum:</strong>
+    {% if metric == 'in_network_rate' or metric == 'completion_rate' %}
+      {{ min_value|floatformat:2 }}%
+    {% elif metric == 'referral_volume' %}
+      {{ min_value|floatformat:0 }}
+    {% else %}
+      ${{ min_value|floatformat:2 }}
+    {% endif %}
+  </li>
+</ul>
+
+<!-- existing code for chart and stats -->
+
+<h3>AI Suggestions</h3>
+<p>{{ suggestion_text }}</p>
+
+
+{% endblock %}

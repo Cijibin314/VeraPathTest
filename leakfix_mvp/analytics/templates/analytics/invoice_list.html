@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Invoices</h2>
+<table>
+  <thead>
+    <tr><th>Period</th><th>Retained Revenue</th><th>Fee Rate</th><th>Amount Due</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+    {% for inv in invoices %}
+      <tr>
+        <td><a href="/invoices/{{ inv.id }}/">{{ inv.period_start }} to {{ inv.period_end }}</a></td>
+        <td>${{ inv.retained_revenue|floatformat:2 }}</td>
+        <td>{{ inv.fee_rate|floatformat:2 }}</td>
+        <td>${{ inv.amount_due|floatformat:2 }}</td>
+        <td>{% if inv.is_paid %}Paid{% else %}Unpaid{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">No invoices generated yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

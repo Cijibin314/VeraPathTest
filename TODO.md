@@ -1,0 +1,1 @@
+Right now, I want gemini to try to solidify our current understanding by making a testing scrip file.

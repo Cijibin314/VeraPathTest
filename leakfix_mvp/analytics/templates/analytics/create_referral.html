@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Create Referral</h2>
+<form method="post">
+  {% csrf_token %}
+  <table>
+    {% for field in form %}
+      <tr>
+        <th>{{ field.label_tag }}</th>
+        <td>
+          {{ field }}
+          {% for error in field.errors %}
+            <div style="color: red;">{{ error }}</div>
+          {% endfor %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+  <button type="submit" style="margin-top: 1rem; padding: 0.5rem 1rem;">Save Referral</button>
+</form>
+{% endblock %}

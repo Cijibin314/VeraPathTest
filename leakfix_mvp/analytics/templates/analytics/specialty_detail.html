@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Metrics for {{ specialty }} (Past 12 Months)</h2>
+
+{% for key, values in metrics.items %}
+  <h3>
+    {% if key == 'in_network_rate' %}In‑network Rate{% endif %}
+    {% if key == 'completion_rate' %}Completion Rate{% endif %}
+    {% if key == 'leakage_cost' %}Leakage Cost{% endif %}
+    {% if key == 'retained_revenue' %}Retained Revenue{% endif %}
+    {% if key == 'referral_volume' %}Referral Volume{% endif %}
+    {% if key == 'avg_leakage_cost' %}Average Leakage Cost{% endif %}
+  </h3>
+  <canvas id="{{ key }}Chart" width="800" height="300"></canvas>
+
+  <p>
+    <strong>Latest:</strong>
+    {% if key == 'in_network_rate' or key == 'completion_rate' %}
+      {{ summary[key].latest|floatformat:2 }}%
+    {% elif key == 'referral_volume' %}
+      {{ summary[key].latest|floatformat:0 }}
+    {% else %}
+      ${{ summary[key].latest|floatformat:2 }}
+    {% endif %}
+    —
+    <strong>Average:</strong>
+    {% if key == 'in_network_rate' or key == 'completion_rate' %}
+      {{ summary[key].avg|floatformat:2 }}%
+    {% elif key == 'referral_volume' %}
+      {{ summary[key].avg|floatformat:0 }}
+    {% else %}
+      ${{ summary[key].avg|floatformat:2 }}
+    {% endif %}
+    —
+    <strong>Max:</strong>
+    {% if key == 'in_network_rate' or key == 'completion_rate' %}
+      {{ summary[key].max|floatformat:2 }}%
+    {% elif key == 'referral_volume' %}
+      {{ summary[key].max|floatformat:0 }}
+    {% else %}
+      ${{ summary[key].max|floatformat:2 }}
+    {% endif %}
+    —
+    <strong>Min:</strong>
+    {% if key == 'in_network_rate' or key == 'completion_rate' %}
+      {{ summary[key].min|floatformat:2 }}%
+    {% elif key == 'referral_volume' %}
+      {{ summary[key].min|floatformat:0 }}
+    {% else %}
+      ${{ summary[key].min|floatformat:2 }}
+    {% endif %}
+    —
+    <strong>Trend:</strong> {{ summary[key].trend }}
+  </p>
+  <p><strong>AI suggestion:</strong> {{ summary[key].suggestion }}</p>
+{% endfor %}
+
+<!-- Embed data for Chart.js -->
+{{ labels|json_script:"labels-data" }}
+{{ metrics|json_script:"metrics-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const labels = JSON.parse(document.getElementById('labels-data').textContent);
+  const metrics = JSON.parse(document.getElementById('metrics-data').textContent);
+
+  const ctxLookup = {
+    in_network_rate: 'Percentage (%)',
+    completion_rate: 'Percentage (%)',
+    leakage_cost: 'Dollars ($)',
+    retained_revenue: 'Dollars ($)',
+    referral_volume: 'Count',
+    avg_leakage_cost: 'Dollars ($)',
+  };
+
+  Object.keys(metrics).forEach((key) => {
+    const ctx = document.getElementById(key + 'Chart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: key,
+          data: metrics[key],
+          borderColor: '#0d6efd',
+          backgroundColor: 'rgba(13, 110, 253, 0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { title: { display: true, text: 'Month' } },
+          y: { title: { display: true, text: ctxLookup[key] || '' }, beginAtZero: true }
+        }
+      }
+    });
+  });
+</script>
+
+<p><a href="{% url 'specialty_dashboard' %}">Back to all specialties</a></p>
+{% endblock %}

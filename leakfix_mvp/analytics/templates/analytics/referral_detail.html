@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Referral Detail</h2>
+<p><strong>Patient:</strong> {{ referral.patient }}</p>
+<p><strong>Provider:</strong> {{ referral.provider.full_name }}</p>
+<p><strong>Payer:</strong> {{ referral.payer.name if referral.payer else 'N/A' }}</p>
+<p><strong>Status:</strong> {{ referral.get_status_display }}</p>
+<p><strong>In‑network:</strong> {{ referral.in_network }}</p>
+<p><strong>Cost Value:</strong> ${{ referral.cost_value|floatformat:2 }}</p>
+
+<h3>Suggested In‑network Providers</h3>
+<ul>
+  {% for item in suggested_with_metrics %}
+    <li>
+      {{ item.provider.full_name }}
+      (In‑network rate: {{ item.metrics.in_network_rate|floatformat:2 }},
+       Completion rate: {{ item.metrics.completion_rate|floatformat:2 }},
+       Avg days: {{ item.metrics.avg_days|floatformat:2 }})
+    </li>
+  {% empty %}
+    <li>No suggestions available.</li>
+  {% endfor %}
+</ul>
+
+<p>
+  <a href="{% url 'set_referral_status' referral.id 'ack' %}">Acknowledge</a> |
+  <a href="{% url 'set_referral_status' referral.id 'scheduled' %}">Schedule</a> |
+  <a href="{% url 'set_referral_status' referral.id 'completed' %}">Complete</a> |
+  <a href="{% url 'set_referral_status' referral.id 'cancelled' %}">Cancel</a>
+</p>
+
+<p><a href="{% url 'delete_referral' referral.id %}" style="color:red;">Delete referral</a></p>
+
+{% endblock %}

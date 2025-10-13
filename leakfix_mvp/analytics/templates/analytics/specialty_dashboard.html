@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Specialty Metrics</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Specialty</th>
+      <th>Total referrals</th>
+      <th>In‑network referrals</th>
+      <th>Out‑of‑network referrals</th>
+      <th>In‑network rate</th>
+      <th>Completion rate</th>
+      <th>Leakage cost ($)</th>
+      <th>Avg leakage cost ($)</th>
+      <th>Retained revenue ($)</th>
+      <th>Median days (comp.)</th>
+      <th>Median days (ack.)</th>
+      <th>Median days (sched.)</th>
+      <th>Avg attempts</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in specialty_data %}
+    <tr>
+      <td><a href="{% url 'specialty_detail' item.specialty %}">{{ item.specialty }}</a></td>
+      <td>{{ item.total }}</td> 
+      <td>{{ item.specialty }}</td>
+      <td>{{ item.total }}</td>
+      <td>{{ item.in_network }}</td>
+      <td>{{ item.out_network }}</td>
+      <td>{{ item.in_network_rate|floatformat:2 }}%</td>
+      <td>{{ item.completion_rate|floatformat:2 }}%</td>
+      <td>${{ item.leakage_cost|floatformat:2 }}</td>
+      <td>${{ item.avg_leakage_cost|floatformat:2 }}</td>
+      <td>${{ item.retained_revenue|floatformat:2 }}</td>
+      <td>{{ item.median_days_completion|floatformat:2 }}</td>
+      <td>{{ item.median_days_ack|floatformat:2 }}</td>
+      <td>{{ item.median_days_schedule|floatformat:2 }}</td>
+      <td>{{ item.avg_attempts|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p><a href="{% url 'analytics_dashboard' %}">Back to main dashboard</a></p>
+{% endblock %}
