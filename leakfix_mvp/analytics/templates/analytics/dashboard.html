@@ -30,13 +30,13 @@
   </a>
 
   <a href="{% url 'metric_detail' 'leakage_cost' %}" class="tile tile-link">
-    <strong>Estimated leakage cost</strong>
+    <strong>Estimated leakage cost (mock)</strong>
     <small>Revenue lost due to out‑of‑network referrals</small>
     <div>${{ leakage_cost|floatformat:2 }}</div>
   </a>
 
   <a href="{% url 'metric_detail' 'retained_revenue' %}" class="tile tile-link">
-    <strong>Estimated dollars retained</strong>
+    <strong>Estimated dollars retained (mock)</strong>
     <small>Revenue kept by referring in‑network</small>
     <div>${{ retained_revenue|floatformat:2 }}</div>
   </a>
@@ -48,26 +48,26 @@
   </a>
 
   <a href="{% url 'metric_detail' 'avg_leakage_cost' %}" class="tile tile-link">
-    <strong>Average leakage cost</strong>
+    <strong>Average leakage cost (mock)</strong>
     <small>Average cost per out‑of‑network referral</small>
     <div>${{ avg_leakage_cost|floatformat:2 }}</div>
   </a>
 
   <!-- Non-clickable metrics -->
   <div class="tile">
-    <strong>Median days to completion</strong>
+    <strong>Median days to completion (mock)</strong>
     <div>{{ median_days_completion|floatformat:2 }} days</div>
   </div>
   <div class="tile">
-    <strong>Median days to acknowledgement</strong>
+    <strong>Median days to acknowledgement (mock)</strong>
     <div>{{ median_days_ack|floatformat:2 }} days</div>
   </div>
   <div class="tile">
-    <strong>Median days to scheduling</strong>
+    <strong>Median days to scheduling (mock)</strong>
     <div>{{ median_days_schedule|floatformat:2 }} days</div>
   </div>
   <div class="tile">
-    <strong>Average attempts per scheduled referral</strong>
+    <strong>Average attempts per scheduled referral (mock)</strong>
     <div>{{ avg_attempts|floatformat:2 }} attempts</div>
   </div>
 </div>
