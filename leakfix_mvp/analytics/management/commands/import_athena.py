@@ -7,6 +7,7 @@ Usage:
 
 This script will:
 - Obtain an OAuth2 token via the client credentials grant.
+- Fetch a department ID.
 - Fetch appointments for the specified date range via Athena’s Appointments API.
 - Map each appointment to Patient, Provider, Payer, and Referral models.
 - Create a Referral with status SCHEDULED and mark it in-network by default.
@@ -55,11 +56,23 @@ class Command(BaseCommand):
 
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        # Step 2: Fetch appointments for the next N days.
-        start_date = datetime.now().date()
-        end_date = start_date + timedelta(days=days)
+        # Step 2: Get a department ID
+        self.stdout.write("Fetching department ID...")
+        dept_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/departments"
+        try:
+            dept_resp = requests.get(dept_url, headers=headers, params={'limit': 1})
+            dept_resp.raise_for_status()
+            department_id = dept_resp.json()['departments'][0]['departmentid']
+            self.stdout.write(self.style.SUCCESS(f"Using Department ID: {department_id}"))
+        except (requests.RequestException, KeyError, IndexError) as e:
+            raise CommandError(f"Could not fetch department ID: {e}")
+
+        # Step 3: Fetch appointments around the current date.
+        start_date = datetime.now().date() - timedelta(days=days//2)
+        end_date = datetime.now().date() + timedelta(days=days//2)
         appt_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/appointments"
         params = {
+            "departmentid": department_id,
             "startdate": start_date.isoformat(),
             "enddate": end_date.isoformat(),
             "showcancelled": False,

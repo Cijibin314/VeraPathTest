@@ -18,6 +18,8 @@ class Command(BaseCommand):
         count_providers = 0
         for item in providers_data.get("referringproviders", providers_data):
             npi = item.get("npinumber") or item.get("npi")
+            if not npi:
+                continue
             first = item.get("firstname", "")
             last = item.get("lastname", "")
             full_name = f"{first} {last}".strip()
@@ -60,10 +62,9 @@ class Command(BaseCommand):
                 specialty = auth.get("specialty") or ""
 
                 # Look up or create the provider by NPI
-                if provider_npi:
-                    provider, _ = Provider.objects.get_or_create(npi=provider_npi, defaults={"full_name": provider_npi})
-                else:
-                    provider = None
+                if not provider_npi:
+                    continue
+                provider, _ = Provider.objects.get_or_create(npi=provider_npi, defaults={"full_name": provider_npi})
 
                 # Look up payer if available (by code)
                 payer_code = auth.get("payercode") or None

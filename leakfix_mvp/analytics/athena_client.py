@@ -16,6 +16,7 @@ def get_token():
         "grant_type": "client_credentials",
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
+        "scope": "athena/service/Athenanet.MDP.*"
     }
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     response = requests.post(TOKEN_URL, data=urlencode(data), headers=headers)
