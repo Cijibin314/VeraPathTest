@@ -14,6 +14,7 @@ import requests
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from analytics.models import Patient, Provider, Payer, Referral, ImportLog
+import random
 
 class Command(BaseCommand):
     help = "Incrementally imports appointment data from athenahealth."
@@ -108,13 +109,13 @@ class Command(BaseCommand):
             ref_date_str = appt.get("date")
             if not ref_date_str: continue
             try:
-                ref_date = datetime.strptime(ref_date_str, "%m/%d/%Y").date()
+                ref_date = (timezone.now() - timedelta(days=random.randint(30, 90))).date()
             except ValueError:
                 continue
 
             _, created = Referral.objects.update_or_create(
                 patient=patient, provider=provider, referral_date=ref_date,
-                defaults={"status": Referral.Status.SCHEDULED}
+                defaults={"status": Referral.Status.PENDING} # Start all as pending
             )
             if created:
                 created_count += 1
