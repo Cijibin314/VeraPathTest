@@ -1,6 +1,7 @@
 import hashlib
 from decimal import Decimal
 from django.db import models
+from django.utils import timezone
 
 class Payer(models.Model):
     code = models.CharField(max_length=64, unique=True)
@@ -13,9 +14,9 @@ class Provider(models.Model):
     npi = models.CharField(max_length=20, unique=True)
     full_name = models.CharField(max_length=200)
     specialty = models.CharField(max_length=120)
-    subspecialty = models.CharField(max_length=120, blank=True)
-    city = models.CharField(max_length=100, blank=True)
-    state = models.CharField(max_length=50, blank=True)
+    subspecialty = models.CharField(max_length=120, blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=50, blank=True, null=True)
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.specialty})"
@@ -51,7 +52,7 @@ class Referral(models.Model):
     referral_date = models.DateField()
     suggested_provider_ids = models.CharField(max_length=200, blank=True)
     is_creation_date_mocked = models.BooleanField(default=False)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(default=timezone.now)
     ack_at = models.DateTimeField(null=True, blank=True)
     scheduled_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)

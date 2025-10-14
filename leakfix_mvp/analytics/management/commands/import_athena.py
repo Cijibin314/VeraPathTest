@@ -25,6 +25,9 @@ class Command(BaseCommand):
         parser.add_argument("--client_secret", required=True, help="athenaOne API client secret")
 
     def handle(self, *args, **opts):
+        # Pre-run check
+        initial_referral_count = Referral.objects.count()
+        self.stdout.write(f"Pre-run check: Found {initial_referral_count} existing referrals.")
         practice_id = opts["practice_id"]
         client_id = opts["client_id"]
         client_secret = opts["client_secret"]
@@ -102,7 +105,7 @@ class Command(BaseCommand):
             provider_id = str(appt.get("providerid") or "")
             if not provider_id: continue
 
-            provider, _ = Provider.objects.update_or_create(
+            provider, _ = Provider.objects.get_or_create(
                 npi=provider_id, defaults={"full_name": f"Provider {provider_id}"}
             )
 
@@ -121,12 +124,10 @@ class Command(BaseCommand):
                 is_mocked = True
 
             _, created = Referral.objects.update_or_create(
-                patient=patient, provider=provider,
+                patient=patient, provider=provider, referral_date=ref_date,
                 defaults={
                     "status": Referral.Status.PENDING,
-                    "is_creation_date_mocked": is_mocked,
-                    "referral_date": ref_date,
-                    "created_at": timezone.make_aware(datetime.combine(ref_date, datetime.min.time()))
+                    "is_creation_date_mocked": is_mocked
                 }
             )
             self.stdout.write(f"[ATHENA_LOG] Processed Referral: PatientID={patient.original_id}, ProviderID={provider_id}, ReferralDate={ref_date}, IsMocked={is_mocked}, Created={created}")
