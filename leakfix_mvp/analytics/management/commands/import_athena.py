@@ -14,7 +14,7 @@ import requests
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from analytics.models import Patient, Provider, Payer, Referral, ImportLog
-import random
+from analytics.mock_data import generate_mock_creation_date
 
 class Command(BaseCommand):
     help = "Incrementally imports appointment data from athenahealth."
@@ -106,12 +106,17 @@ class Command(BaseCommand):
                 npi=provider_id, defaults={"full_name": f"Provider {provider_id}"}
             )
 
+            # If the API provides a date, use it. Otherwise, create a mock date.
             ref_date_str = appt.get("date")
-            if not ref_date_str: continue
-            try:
-                ref_date = (timezone.now() - timedelta(days=random.randint(30, 90))).date()
-            except ValueError:
-                continue
+            if ref_date_str:
+                try:
+                    ref_date = datetime.strptime(ref_date_str, "%m/%d/%Y").date()
+                except ValueError:
+                    self.stdout.write(self.style.WARNING(f"\n  -> Invalid date format '{ref_date_str}'. Using mock date."))
+                    ref_date = generate_mock_creation_date()
+            else:
+                self.stdout.write(self.style.WARNING(f"\n  -> No creation date from API. Using mock date."))
+                ref_date = generate_mock_creation_date()
 
             _, created = Referral.objects.update_or_create(
                 patient=patient, provider=provider, referral_date=ref_date,

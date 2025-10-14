@@ -5,49 +5,94 @@ from django.core.management.base import BaseCommand, CommandError
 from django.core.paginator import Paginator
 from django.utils import timezone
 from analytics.models import Provider, Patient, Referral, Payer
+from analytics.athena_client import get_token, get
+from analytics.mock_data import generate_mock_insurance_data, generate_mock_referral_auth
 
 class Command(BaseCommand):
-    help = "Enriches existing referral data with mock statuses, costs, and timestamps."
+    help = "Imports referral data, supplementing with mock data where APIs are empty."
 
     def add_arguments(self, parser):
-        parser.add_argument("--page_size", type=int, default=100, help="Number of referrals to process per page.")
+        parser.add_argument("practice_id", type=str, help="Athenahealth practice ID")
+        parser.add_argument("--page_size", type=int, default=25, help="Number of patients to process per page.")
 
     def handle(self, *args, **options):
+        practice_id = options["practice_id"]
         page_size = options["page_size"]
-        self.stdout.write("Enriching existing referrals with mock data...")
+        token = get_token()
+        all_providers = list(Provider.objects.all())
+        if not all_providers:
+            raise CommandError("No providers found. Please run import_athena first.")
 
-        all_referrals = Referral.objects.filter(status=Referral.Status.PENDING).order_by('id')
-        if not all_referrals.exists():
-            self.stdout.write(self.style.WARNING("No pending referrals to process. Run import_athena first."))
-            return
-
-        paginator = Paginator(all_referrals, page_size)
-        updated_count = 0
+        self.stdout.write("Importing referral authorizations (with mock data fallback)...")
+        all_patients = Patient.objects.all().order_by('id')
+        paginator = Paginator(all_patients, page_size)
+        total_created = 0
+        total_updated = 0
 
         for page_num in paginator.page_range:
             self.stdout.write(f"-- Processing page {page_num} of {paginator.num_pages} --")
-            for referral in paginator.page(page_num).object_list:
-                # Decide on a final status for the mock referral
-                final_status = random.choice(["scheduled", "completed", "cancelled"])
-                is_eligible = random.choice([True, True, True, False])
-                payer_code = f"MOCK-PAYER-{random.randint(1, 5)}"
-                payer, _ = Payer.objects.get_or_create(code=payer_code, defaults={"name": f"Mock Payer {payer_code}"})
+            for patient in paginator.page(page_num).object_list:
+                try:
+                    insurances_data = get(f"patients/{patient.original_id}/insurances", practice_id, token)
+                    if not insurances_data.get("insurances"):
+                        self.stdout.write(self.style.WARNING(f"\n  -> No live insurance data for patient {patient.original_id}. Using mock data."))
+                        insurances_data = {"insurances": [generate_mock_insurance_data()]}
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f"\n  -> API error for patient {patient.original_id} insurances: {e}. Using mock data."))
+                    insurances_data = {"insurances": [generate_mock_insurance_data()]}
 
-                # Generate chronological timestamps based on the existing referral date
-                referral.ack_at = referral.referral_date + timedelta(days=random.randint(1, 5))
-                if final_status in ["scheduled", "completed"]:
-                    referral.scheduled_at = referral.ack_at + timedelta(days=random.randint(1, 10))
-                if final_status == "completed":
-                    referral.completed_at = referral.scheduled_at + timedelta(days=random.randint(5, 20))
-                if final_status == "cancelled":
-                    referral.cancelled_at = referral.ack_at + timedelta(days=random.randint(1, 15))
+                eligibility_by_payer = {
+                    str(ins.get("insurancepackageid")): ins.get("eligibilitystatus", "").lower() == "eligible"
+                    for ins in insurances_data.get("insurances", [])
+                }
 
-                referral.status = final_status
-                referral.in_network = is_eligible
-                referral.payer = payer
-                referral.cost_value = Decimal(random.randint(50, 1200))
-                
-                referral.save()
-                updated_count += 1
+                try:
+                    refauths_data = get(f"patients/{patient.original_id}/referralauths", practice_id, token)
+                    if not refauths_data.get("referralauths"):
+                        self.stdout.write(self.style.WARNING(f"\n  -> No live referral auth data for patient {patient.original_id}. Using mock data."))
+                        mock_provider = random.choice(all_providers)
+                        mock_payer_code = list(eligibility_by_payer.keys())[0] if eligibility_by_payer else "MOCK-101"
+                        refauths_data = {"referralauths": [generate_mock_referral_auth(mock_provider.npi, mock_payer_code)]}
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f"\n  -> API error for patient {patient.original_id} referral auths: {e}. Using mock data."))
+                    mock_provider = random.choice(all_providers)
+                    mock_payer_code = list(eligibility_by_payer.keys())[0] if eligibility_by_payer else "MOCK-101"
+                    refauths_data = {"referralauths": [generate_mock_referral_auth(mock_provider.npi, mock_payer_code)]}
 
-        self.stdout.write(self.style.SUCCESS(f"Enrichment complete. Updated {updated_count} referral records."))
+                for auth in refauths_data.get("referralauths", []):
+                    provider_id = auth.get("referringproviderid")
+                    if not provider_id: continue
+                    provider, _ = Provider.objects.get_or_create(npi=str(provider_id), defaults={"full_name": f"Provider {provider_id}"})
+
+                    payer_code = list(eligibility_by_payer.keys())[0] if eligibility_by_payer else None
+                    if not payer_code: continue
+                    payer, _ = Payer.objects.get_or_create(code=payer_code, defaults={"name": f"Payer {payer_code}"})
+
+                    is_in_network = eligibility_by_payer.get(payer_code, False)
+                    status = (auth.get("referralauthtype") or "pending").lower()
+                    if status not in Referral.Status.values: status = Referral.Status.PENDING
+
+                    # Find the most recent pending referral for this patient/provider and update it
+                    try:
+                        referral_to_update = Referral.objects.filter(
+                            patient=patient, 
+                            provider=provider,
+                            status=Referral.Status.PENDING
+                        ).latest('referral_date')
+
+                        referral_to_update.status = status
+                        referral_to_update.in_network = is_in_network
+                        referral_to_update.payer = payer
+                        referral_to_update.cost_value = Decimal(auth.get("amount", "0") or "0")
+                        referral_to_update.ack_at = auth.get("acknowledged_at")
+                        referral_to_update.scheduled_at = auth.get("scheduled_at")
+                        referral_to_update.completed_at = auth.get("completed_at")
+                        referral_to_update.cancelled_at = auth.get("cancelled_at")
+                        referral_to_update.save()
+                        total_updated += 1
+                    except Referral.DoesNotExist:
+                        # If no pending referral exists, we can't update anything.
+                        # This can happen if import_athena hasn't been run recently.
+                        pass
+
+        self.stdout.write(self.style.SUCCESS(f"Import complete. Updated {total_updated} referral records."))
