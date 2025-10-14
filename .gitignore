@@ -16,6 +16,7 @@ media/
 # Static files
 staticfiles/
 useful_commands.md
-
+docsList.txt
+GEMINI.md
 # Other
 .DS_Store
