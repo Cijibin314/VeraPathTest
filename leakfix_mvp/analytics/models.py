@@ -92,3 +92,14 @@ class Invoice(models.Model):
 
     def __str__(self) -> str:
         return f"Invoice {self.id} ({self.period_start} to {self.period_end})"
+
+
+class ImportLog(models.Model):
+    """Tracks the status and timestamp of data import tasks."""
+    task_name = models.CharField(max_length=100, unique=True)
+    last_run_at = models.DateTimeField()
+    status = models.CharField(max_length=20)
+    notes = models.TextField(blank=True)
+
+    def __str__(self) -> str:
+        return f"{self.task_name}: {self.status} at {self.last_run_at:%Y-%m-%d %H:%M}"

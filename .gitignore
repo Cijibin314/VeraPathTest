@@ -15,6 +15,7 @@ media/
 
 # Static files
 staticfiles/
+useful_commands.md
 
 # Other
 .DS_Store
