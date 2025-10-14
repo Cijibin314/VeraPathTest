@@ -65,7 +65,30 @@ class Command(BaseCommand):
 
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        # Step 2: Fetch appointments in the determined time window
+        # Step 2: Fetch all providers and create them if they don't exist
+        try:
+            provider_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/providers"
+            response = requests.get(provider_url, headers=headers)
+            response.raise_for_status()
+            providers_data = response.json().get("providers", [])
+
+            provider_count = 0
+            for provider_data in providers_data:
+                provider_id = str(provider_data.get("providerid"))
+                if not provider_id: continue
+
+                _, created = Provider.objects.get_or_create(
+                    npi=provider_id, 
+                    defaults={"full_name": provider_data.get("displayname") or f"Provider {provider_id}"}
+                )
+                if created:
+                    provider_count += 1
+            self.stdout.write(self.style.SUCCESS(f"Found and created {provider_count} new providers."))
+
+        except requests.RequestException as e:
+            raise CommandError(f"Failed to fetch providers: {e}")
+
+        # Step 3: Fetch appointments in the determined time window
         try:
             all_appointments = []
             dept_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/departments"
@@ -91,7 +114,7 @@ class Command(BaseCommand):
             ImportLog.objects.create(task_name=task_name, last_run_at=current_run_time, status="failed", notes=f"API Error: {e}")
             raise CommandError(f"Failed to fetch appointments: {e}")
 
-        # Step 3: Process the appointments
+        # Step 4: Process the appointments
         created_count = 0
         for appt in all_appointments:
             patient_id = str(appt.get("patientid"))

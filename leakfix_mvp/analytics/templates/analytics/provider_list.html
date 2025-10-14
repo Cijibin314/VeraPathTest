@@ -2,18 +2,22 @@
 
 {% block content %}
 <h2>Provider Directory</h2>
-<form method="get" style="margin-bottom: 1rem;">
+<form id="search-form" method="get" style="margin-bottom: 1rem;">
   <input type="text" name="q" value="{{ query }}" placeholder="Search providers (name, specialty, city)" style="padding: 0.5rem; width: 300px;" />
-  <button type="submit" style="padding: 0.5rem 1rem;">Search</button>
 </form>
 
-<table>
+<table id="provider-table">
   <thead>
     <tr>
       <th>Name</th>
       <th>Specialty</th>
       <th>Subspecialty</th>
       <th>Location</th>
+      <th>NPI</th>
+      <th>Accepting New Patients</th>
+      <th>Average Wait Time</th>
+      <th>Insurances Accepted</th>
+      <th>Hospital Affiliations</th>
     </tr>
   </thead>
   <tbody>
@@ -23,12 +27,61 @@
         <td>{{ provider.specialty }}</td>
         <td>{{ provider.subspecialty }}</td>
         <td>{{ provider.city }}, {{ provider.state }}</td>
+        <td>{{ provider.npi }}</td>
+        <td>{{ provider.accepting_new_patients }}</td>
+        <td>{{ provider.average_wait_time }} days</td>
+        <td>
+          {% for payer in provider.insurances_accepted.all %}
+            {{ payer.name }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </td>
+        <td>
+          {% for hospital in provider.hospital_affiliations.all %}
+            {{ hospital.name }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </td>
       </tr>
     {% empty %}
       <tr>
-        <td colspan="4">No providers found.</td>
+        <td colspan="9">No providers found.</td>
       </tr>
     {% endfor %}
   </tbody>
 </table>
+
+<script>
+  const searchInput = document.querySelector('input[name="q"]');
+  const providerTableBody = document.querySelector('#provider-table tbody');
+
+  searchInput.addEventListener('input', async (event) => {
+    const query = event.target.value;
+    const response = await fetch(`/providers/search/?q=${query}`);
+    const providers = await response.json();
+
+    providerTableBody.innerHTML = '';
+
+    if (providers.length > 0) {
+      for (const provider of providers) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${provider.full_name}</td>
+          <td>${provider.specialty}</td>
+          <td>${provider.subspecialty}</td>
+          <td>${provider.city}, ${provider.state}</td>
+          <td>${provider.npi}</td>
+          <td>${provider.accepting_new_patients}</td>
+          <td>${provider.average_wait_time} days</td>
+          <td></td>
+          <td></td>
+        `;
+        providerTableBody.appendChild(row);
+      }
+    } else {
+      const row = document.createElement('tr');
+      row.innerHTML = '<td colspan="9">No providers found.</td>';
+      providerTableBody.appendChild(row);
+    }
+  });
+</script>
+
 {% endblock %}

@@ -5,6 +5,7 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='analytics_dashboard'),
     path('specialties/', views.specialty_dashboard, name='specialty_dashboard'),
     path('providers/', views.provider_list, name='provider_list'),
+    path('providers/search/', views.provider_search, name='provider_search'),
     path('referrals/new/', views.create_referral, name='create_referral'),
     path('referrals/<int:pk>/', views.referral_detail, name='referral_detail'),
     path('referrals/<int:pk>/status/<str:state>/', views.set_referral_status, name='set_referral_status'),

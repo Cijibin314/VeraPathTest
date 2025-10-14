@@ -87,8 +87,34 @@ def dashboard(request):
     return render(request, 'analytics/dashboard.html', context)
 
 
+from django.http import JsonResponse
+
+from django.db.models.functions import Coalesce
+
 # --- Provider list ---
 def provider_list(request):
+    providers = list(Provider.objects.all())
+    for provider in providers:
+        score = 0
+        if provider.full_name: score += 1
+        if provider.specialty: score += 1
+        if provider.subspecialty: score += 1
+        if provider.city: score += 1
+        if provider.state: score += 1
+        if provider.npi: score += 1
+        if provider.accepting_new_patients is not None: score += 1
+        if provider.average_wait_time is not None: score += 1
+        if provider.insurances_accepted.exists(): score += 1
+        if provider.hospital_affiliations.exists(): score += 1
+        provider.completeness_score = score
+
+    providers.sort(key=lambda p: p.completeness_score, reverse=True)
+
+    return render(request, 'analytics/provider_list.html', {'providers': providers})
+
+
+# --- Provider search ---
+def provider_search(request):
     query = request.GET.get('q', '').strip()
     providers = Provider.objects.all()
     if query:
@@ -100,7 +126,8 @@ def provider_list(request):
             | Q(state__icontains=query)
         )
     providers = providers.order_by('full_name')
-    return render(request, 'analytics/provider_list.html', {'providers': providers, 'query': query})
+    data = list(providers.values('full_name', 'specialty', 'subspecialty', 'city', 'state', 'npi', 'accepting_new_patients', 'average_wait_time'))
+    return JsonResponse(data, safe=False)
 
 
 # --- Suggestion engine helpers (unchanged) ---

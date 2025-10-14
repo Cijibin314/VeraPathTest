@@ -10,6 +10,12 @@ class Payer(models.Model):
     def __str__(self) -> str:
         return self.name
 
+class Hospital(models.Model):
+    name = models.CharField(max_length=200)
+
+    def __str__(self) -> str:
+        return self.name
+
 class Provider(models.Model):
     npi = models.CharField(max_length=20, unique=True)
     full_name = models.CharField(max_length=200)
@@ -17,6 +23,10 @@ class Provider(models.Model):
     subspecialty = models.CharField(max_length=120, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=50, blank=True, null=True)
+    insurances_accepted = models.ManyToManyField(Payer, blank=True)
+    hospital_affiliations = models.ManyToManyField(Hospital, blank=True)
+    accepting_new_patients = models.BooleanField(default=True, blank=True, null=True)
+    average_wait_time = models.IntegerField(null=True, blank=True, help_text="In days")
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.specialty})"

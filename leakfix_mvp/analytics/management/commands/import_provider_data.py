@@ -9,7 +9,7 @@ Usage:
 """
 import requests
 from django.core.management.base import BaseCommand, CommandError
-from analytics.models import Provider
+from analytics.models import Provider, Payer, Hospital
 from analytics.athena_client import get_token
 
 class Command(BaseCommand):
@@ -43,6 +43,23 @@ class Command(BaseCommand):
                     provider.subspecialty = provider_data.get("specialty2")
                     provider.city = provider_data.get("city")
                     provider.state = provider_data.get("state")
+                    provider.accepting_new_patients = provider_data.get("acceptingnewpatients")
+                    provider.average_wait_time = provider_data.get("waitdays")
+
+                    # Clear existing many-to-many relationships
+                    provider.insurances_accepted.clear()
+                    provider.hospital_affiliations.clear()
+
+                    # Add insurances
+                    for payer_data in provider_data.get("insurances", []):
+                        payer, _ = Payer.objects.get_or_create(code=payer_data.get("insuranceplanname"), defaults={"name": payer_data.get("insuranceplanname")})
+                        provider.insurances_accepted.add(payer)
+
+                    # Add hospitals
+                    for hospital_data in provider_data.get("hospitals", []):
+                        hospital, _ = Hospital.objects.get_or_create(name=hospital_data.get("hospitalname"))
+                        provider.hospital_affiliations.add(hospital)
+
                     provider.save()
                     updated_count += 1
                 except Provider.DoesNotExist:
