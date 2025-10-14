@@ -27,19 +27,19 @@ def dashboard(request):
     avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
 
     durations_completion = [
-        (ref.completed_at - ref.created_at).days
+        (ref.completed_at.date() - ref.referral_date).days
         for ref in Referral.objects.filter(completed_at__isnull=False)
     ]
     median_days_completion = median(durations_completion) if durations_completion else 0
 
     durations_ack = [
-        (ref.ack_at - ref.created_at).days
+        (ref.ack_at.date() - ref.referral_date).days
         for ref in Referral.objects.filter(ack_at__isnull=False)
     ]
     median_days_ack = median(durations_ack) if durations_ack else 0
 
     durations_sched = [
-        (ref.scheduled_at - ref.created_at).days
+        (ref.scheduled_at.date() - ref.referral_date).days
         for ref in Referral.objects.filter(scheduled_at__isnull=False)
     ]
     median_days_schedule = median(durations_sched) if durations_sched else 0
@@ -319,17 +319,17 @@ def specialty_dashboard(request):
         avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('cost_value'))['avg'] or 0
         retained_revenue = in_network * avg_in_cost
         durations_completion = [
-            (ref.completed_at - ref.created_at).days
+            (ref.completed_at.date() - ref.referral_date).days
             for ref in refs.filter(completed_at__isnull=False)
         ]
         median_days_completion = median(durations_completion) if durations_completion else 0
         durations_ack = [
-            (ref.ack_at - ref.created_at).days
+            (ref.ack_at.date() - ref.referral_date).days
             for ref in refs.filter(ack_at__isnull=False)
         ]
         median_days_ack = median(durations_ack) if durations_ack else 0
         durations_sched = [
-            (ref.scheduled_at - ref.created_at).days
+            (ref.scheduled_at.date() - ref.referral_date).days
             for ref in refs.filter(scheduled_at__isnull=False)
         ]
         median_days_schedule = median(durations_sched) if durations_sched else 0
@@ -369,17 +369,17 @@ def specialty_detail(request, specialty):
     avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('cost_value'))['avg'] or 0
     retained_revenue = in_network * avg_in_cost
     durations_completion = [
-        (ref.completed_at - ref.created_at).days
+        (ref.completed_at.date() - ref.referral_date).days
         for ref in refs.filter(completed_at__isnull=False)
     ]
     median_days_completion = median(durations_completion) if durations_completion else 0
     durations_ack = [
-        (ref.ack_at - ref.created_at).days
+        (ref.ack_at.date() - ref.referral_date).days
         for ref in refs.filter(ack_at__isnull=False)
     ]
     median_days_ack = median(durations_ack) if durations_ack else 0
     durations_sched = [
-        (ref.scheduled_at - ref.created_at).days
+        (ref.scheduled_at.date() - ref.referral_date).days
         for ref in refs.filter(scheduled_at__isnull=False)
     ]
     median_days_schedule = median(durations_sched) if durations_sched else 0

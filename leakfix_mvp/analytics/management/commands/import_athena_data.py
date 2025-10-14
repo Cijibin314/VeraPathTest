@@ -8,6 +8,10 @@ from analytics.models import Provider, Patient, Referral, Payer
 from analytics.athena_client import get_token, get
 from analytics.mock_data import generate_mock_insurance_data, generate_mock_referral_auth
 
+from datetime import datetime
+
+from django.utils import timezone
+
 class Command(BaseCommand):
     help = "Imports referral data, supplementing with mock data where APIs are empty."
 
@@ -16,6 +20,7 @@ class Command(BaseCommand):
         parser.add_argument("--page_size", type=int, default=25, help="Number of patients to process per page.")
 
     def handle(self, *args, **options):
+        from datetime import datetime
         practice_id = options["practice_id"]
         page_size = options["page_size"]
         token = get_token()
@@ -46,53 +51,86 @@ class Command(BaseCommand):
                     for ins in insurances_data.get("insurances", [])
                 }
 
+                # Find all pending referrals for this patient
+                pending_referrals = Referral.objects.filter(
+                    patient=patient,
+                    status=Referral.Status.PENDING
+                ).order_by('-referral_date')
+
+                if not pending_referrals:
+                    continue
+
                 try:
                     refauths_data = get(f"patients/{patient.original_id}/referralauths", practice_id, token)
-                    if not refauths_data.get("referralauths"):
-                        self.stdout.write(self.style.WARNING(f"\n  -> No live referral auth data for patient {patient.original_id}. Using mock data."))
-                        mock_provider = random.choice(all_providers)
-                        mock_payer_code = list(eligibility_by_payer.keys())[0] if eligibility_by_payer else "MOCK-101"
-                        refauths_data = {"referralauths": [generate_mock_referral_auth(mock_provider.npi, mock_payer_code)]}
+                    auths = refauths_data.get("referralauths", [])
                 except Exception as e:
-                    self.stdout.write(self.style.WARNING(f"\n  -> API error for patient {patient.original_id} referral auths: {e}. Using mock data."))
-                    mock_provider = random.choice(all_providers)
-                    mock_payer_code = list(eligibility_by_payer.keys())[0] if eligibility_by_payer else "MOCK-101"
-                    refauths_data = {"referralauths": [generate_mock_referral_auth(mock_provider.npi, mock_payer_code)]}
+                    self.stdout.write(self.style.WARNING(f"\n  -> API error for patient {patient.original_id} referral auths: {e}. Using mock data for all pending referrals."))
+                    auths = []
 
-                for auth in refauths_data.get("referralauths", []):
-                    provider_id = auth.get("referringproviderid")
-                    if not provider_id: continue
-                    provider, _ = Provider.objects.get_or_create(npi=str(provider_id), defaults={"full_name": f"Provider {provider_id}"})
+                # Create a dictionary of auths by provider NPI for easier lookup
+                auths_by_provider = {auth.get("referringproviderid"): auth for auth in auths}
+
+                for referral_to_update in pending_referrals:
+                    self.stdout.write(f"\n[DATA_LOG] Processing referral {referral_to_update.id} (ReferralDate: {referral_to_update.referral_date}, IsMocked: {referral_to_update.is_creation_date_mocked})")
+                    auth = None
+                    # If the creation date was mocked, we must generate mock auth data.
+                    if referral_to_update.is_creation_date_mocked:
+                        self.stdout.write(f"[DATA_LOG]   -> Flag is_creation_date_mocked is True. Skipping API call.")
+                        provider_npi = referral_to_update.provider.npi
+                        mock_payer_code = list(eligibility_by_payer.keys())[0] if eligibility_by_payer else "MOCK-101"
+                        auth = generate_mock_referral_auth(provider_npi, mock_payer_code, base_date=timezone.make_aware(datetime.combine(referral_to_update.referral_date, datetime.min.time())))
+                        self.stdout.write(f"[DATA_LOG]   -> Generated mock auth: {auth}")
+                    else:
+                        # Otherwise, try to find a real auth record.
+                        self.stdout.write(f"[DATA_LOG]   -> Flag is_creation_date_mocked is False. Calling API.")
+                        provider_npi = referral_to_update.provider.npi
+                        auth = auths_by_provider.get(provider_npi)
+                        if auth:
+                            self.stdout.write(f"[DATA_LOG]   -> Found live auth data: {auth}")
+
+                        # Validate the real auth data
+                        if auth and auth.get("completed_at"):
+                            try:
+                                completed_at = datetime.strptime(auth.get("completed_at"), "%Y-%m-%dT%H:%M:%SZ").date()
+                                if completed_at < referral_to_update.referral_date:
+                                    self.stdout.write(self.style.WARNING(f"[DATA_LOG]   -> INVALID live data: completed_at ({completed_at}) is before referral_date ({referral_to_update.referral_date}). Discarding."))
+                                    auth = None # Discard the invalid live data
+                            except (ValueError, TypeError):
+                                self.stdout.write(self.style.WARNING(f"[DATA_LOG]   -> Could not parse completed_at. Discarding."))
+                                auth = None # Discard the invalid live data
+
+                    # If still no auth, generate mock data as a final fallback.
+                    if not auth:
+                        self.stdout.write(self.style.WARNING(f"[DATA_LOG]   -> No valid auth found. Generating mock data as fallback."))
+                        provider_npi = referral_to_update.provider.npi
+                        mock_payer_code = list(eligibility_by_payer.keys())[0] if eligibility_by_payer else "MOCK-101"
+                        auth = generate_mock_referral_auth(provider_npi, mock_payer_code, base_date=timezone.make_aware(datetime.combine(referral_to_update.referral_date, datetime.min.time())))
+                        self.stdout.write(f"[DATA_LOG]   -> Generated mock auth: {auth}")
 
                     payer_code = list(eligibility_by_payer.keys())[0] if eligibility_by_payer else None
                     if not payer_code: continue
                     payer, _ = Payer.objects.get_or_create(code=payer_code, defaults={"name": f"Payer {payer_code}"})
 
                     is_in_network = eligibility_by_payer.get(payer_code, False)
-                    status = (auth.get("referralauthtype") or "pending").lower()
+                    status = (auth.get("referralstatus") or auth.get("referralauthtype") or "pending").lower()
                     if status not in Referral.Status.values: status = Referral.Status.PENDING
 
-                    # Find the most recent pending referral for this patient/provider and update it
-                    try:
-                        referral_to_update = Referral.objects.filter(
-                            patient=patient, 
-                            provider=provider,
-                            status=Referral.Status.PENDING
-                        ).latest('referral_date')
+                    referral_to_update.status = status
+                    referral_to_update.in_network = is_in_network
+                    referral_to_update.payer = payer
+                    referral_to_update.cost_value = Decimal(auth.get("amount", "0") or "0")
+                    referral_to_update.ack_at = auth.get("acknowledged_at")
+                    referral_to_update.scheduled_at = auth.get("scheduled_at")
+                    referral_to_update.completed_at = auth.get("completed_at")
+                    referral_to_update.cancelled_at = auth.get("cancelled_at")
+                    referral_to_update.save()
+                    total_updated += 1
 
-                        referral_to_update.status = status
-                        referral_to_update.in_network = is_in_network
-                        referral_to_update.payer = payer
-                        referral_to_update.cost_value = Decimal(auth.get("amount", "0") or "0")
-                        referral_to_update.ack_at = auth.get("acknowledged_at")
-                        referral_to_update.scheduled_at = auth.get("scheduled_at")
-                        referral_to_update.completed_at = auth.get("completed_at")
-                        referral_to_update.cancelled_at = auth.get("cancelled_at")
-                        referral_to_update.save()
-                        total_updated += 1
-                    except Referral.DoesNotExist:
-                        # If no pending referral exists, we can't update anything.
-                        # This can happen if import_athena hasn't been run recently.
-                        pass
+                    self.stdout.write(f"  -> Updated referral {referral_to_update.id}:")
+                    self.stdout.write(f"    referral_date: {referral_to_update.referral_date}")
+                    self.stdout.write(f"    created_at: {referral_to_update.created_at}")
+                    self.stdout.write(f"    ack_at: {referral_to_update.ack_at}")
+                    self.stdout.write(f"    scheduled_at: {referral_to_update.scheduled_at}")
+                    self.stdout.write(f"    completed_at: {referral_to_update.completed_at}")
 
         self.stdout.write(self.style.SUCCESS(f"Import complete. Updated {total_updated} referral records."))

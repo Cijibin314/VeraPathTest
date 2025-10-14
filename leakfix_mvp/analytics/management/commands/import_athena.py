@@ -106,7 +106,7 @@ class Command(BaseCommand):
                 npi=provider_id, defaults={"full_name": f"Provider {provider_id}"}
             )
 
-            # If the API provides a date, use it. Otherwise, create a mock date.
+            is_mocked = False
             ref_date_str = appt.get("date")
             if ref_date_str:
                 try:
@@ -114,14 +114,22 @@ class Command(BaseCommand):
                 except ValueError:
                     self.stdout.write(self.style.WARNING(f"\n  -> Invalid date format '{ref_date_str}'. Using mock date."))
                     ref_date = generate_mock_creation_date()
+                    is_mocked = True
             else:
                 self.stdout.write(self.style.WARNING(f"\n  -> No creation date from API. Using mock date."))
                 ref_date = generate_mock_creation_date()
+                is_mocked = True
 
             _, created = Referral.objects.update_or_create(
-                patient=patient, provider=provider, referral_date=ref_date,
-                defaults={"status": Referral.Status.PENDING} # Start all as pending
+                patient=patient, provider=provider,
+                defaults={
+                    "status": Referral.Status.PENDING,
+                    "is_creation_date_mocked": is_mocked,
+                    "referral_date": ref_date,
+                    "created_at": timezone.make_aware(datetime.combine(ref_date, datetime.min.time()))
+                }
             )
+            self.stdout.write(f"[ATHENA_LOG] Processed Referral: PatientID={patient.original_id}, ProviderID={provider_id}, ReferralDate={ref_date}, IsMocked={is_mocked}, Created={created}")
             if created:
                 created_count += 1
 

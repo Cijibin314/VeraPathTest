@@ -10,20 +10,19 @@ def generate_mock_insurance_data():
         "eligibilitystatus": random.choice(["eligible", "ineligible", "unknown"])
     }
 
-def generate_mock_referral_auth(provider_npi, payer_code):
+def generate_mock_referral_auth(provider_npi, payer_code, base_date):
     """Generates a single mock referral authorization with timestamps."""
     status = random.choice(["pending", "scheduled", "completed", "cancelled"])
-    created_at = timezone.now() - timedelta(days=random.randint(30, 90))
     acknowledged_at, scheduled_at, completed_at, cancelled_at = None, None, None, None
 
     if status in ["acknowledged", "scheduled", "completed"]:
-        acknowledged_at = created_at + timedelta(days=random.randint(1, 5))
+        acknowledged_at = base_date + timedelta(days=random.randint(1, 5))
     if status in ["scheduled", "completed"]:
-        scheduled_at = (acknowledged_at or created_at) + timedelta(days=random.randint(1, 10))
+        scheduled_at = acknowledged_at + timedelta(days=random.randint(1, 10))
     if status == "completed":
-        completed_at = (scheduled_at or created_at) + timedelta(days=random.randint(5, 20))
+        completed_at = scheduled_at + timedelta(days=random.randint(5, 20))
     if status == "cancelled":
-        cancelled_at = created_at + timedelta(days=random.randint(1, 15))
+        cancelled_at = base_date + timedelta(days=random.randint(1, 15))
 
     return {
         "referringprovidernpi": provider_npi,
@@ -31,8 +30,7 @@ def generate_mock_referral_auth(provider_npi, payer_code):
         "referralstatus": status,
         "specialty": random.choice(["Cardiology", "Dermatology", "Orthopedics"]),
         "amount": str(random.randint(50, 500)),
-        "created_at": created_at,
-        "acknowledged_at": acknowledged_at,
+        "ack_at": acknowledged_at,
         "scheduled_at": scheduled_at,
         "completed_at": completed_at,
         "cancelled_at": cancelled_at,
