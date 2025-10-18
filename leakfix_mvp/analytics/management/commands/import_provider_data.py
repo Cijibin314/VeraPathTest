@@ -10,7 +10,7 @@ Usage:
 import requests
 from django.core.management.base import BaseCommand, CommandError
 from analytics.models import Provider, Payer, Hospital
-from analytics.athena_client import get_token
+from analytics.athena_client import get_token, get
 
 class Command(BaseCommand):
     help = "Imports provider data from athenahealth."
@@ -30,41 +30,60 @@ class Command(BaseCommand):
             providers_data = response.json().get("providers", [])
 
             updated_count = 0
-            for provider_data in providers_data:
-                provider_id = str(provider_data.get("providerid"))
+            for provider_summary_data in providers_data:
+                provider_id = str(provider_summary_data.get("providerid"))
                 if not provider_id: continue
 
                 try:
+                    # Get detailed provider data
+                    self.stdout.write(f"[PROVIDER_DATA_LOG] Fetching details for provider {provider_id}")
+                    provider_detail_data = get(f"providers/{provider_id}", practice_id, token, params={"showusualdepartmentguessthreshold": 0.5})
+                    self.stdout.write(f"[PROVIDER_DATA_LOG]   -> Received provider detail data: {provider_detail_data}")
+
+                    if provider_detail_data:
+                        provider_detail = provider_detail_data[0]
+                    else:
+                        continue
+
                     provider = Provider.objects.get(npi=provider_id)
-                    if provider_data.get("displayname"):
-                        provider.full_name = provider_data.get("displayname")
-                    if provider_data.get("specialty"):
-                        provider.specialty = provider_data.get("specialty")
-                    provider.subspecialty = provider_data.get("specialty2")
-                    provider.city = provider_data.get("city")
-                    provider.state = provider_data.get("state")
-                    provider.accepting_new_patients = provider_data.get("acceptingnewpatients")
-                    provider.average_wait_time = provider_data.get("waitdays")
+                    if provider_detail.get("displayname"):
+                        provider.full_name = provider_detail.get("displayname")
+                    else:
+                        provider.full_name = f"{provider_detail.get('firstname', '')} {provider_detail.get('lastname', '')}"
+                    
+                    provider.specialty = provider_detail.get("specialty")
+                    provider.subspecialty = provider_detail.get("specialty2")
 
-                    # Clear existing many-to-many relationships
-                    provider.insurances_accepted.clear()
-                    provider.hospital_affiliations.clear()
+                    # Get department and location
+                    department_id = provider_detail.get("usualdepartmentid")
+                    self.stdout.write(f"[PROVIDER_DATA_LOG] Provider {provider_id}: usualdepartmentid={department_id}")
+                    if department_id:
+                        try:
+                            department_data_list = get(f"departments/{department_id}", practice_id, token)
+                            if department_data_list:
+                                department_data = department_data_list[0]
+                                self.stdout.write(f"[PROVIDER_DATA_LOG]   -> Department data: {department_data}")
+                                provider.city = department_data.get("city")
+                                provider.state = department_data.get("state")
+                                provider.primary_department = department_data.get("name")
+                                self.stdout.write(f"[PROVIDER_DATA_LOG]   -> Setting city={provider.city}, state={provider.state}, primary_department={provider.primary_department}")
 
-                    # Add insurances
-                    for payer_data in provider_data.get("insurances", []):
-                        payer, _ = Payer.objects.get_or_create(code=payer_data.get("insuranceplanname"), defaults={"name": payer_data.get("insuranceplanname")})
-                        provider.insurances_accepted.add(payer)
+                                if department_data.get("ishospitaldepartment"):
+                                    hospital, _ = Hospital.objects.get_or_create(name=department_data.get("name"))
+                                    provider.hospital_affiliations.add(hospital)
+                        except requests.RequestException as e:
+                            self.stdout.write(self.style.WARNING(f"\n  -> API error for department {department_id}: {e}. Skipping location data."))
 
-                    # Add hospitals
-                    for hospital_data in provider_data.get("hospitals", []):
-                        hospital, _ = Hospital.objects.get_or_create(name=hospital_data.get("hospitalname"))
-                        provider.hospital_affiliations.add(hospital)
+                    provider.accepting_new_patients = provider_detail.get("acceptingnewpatients")
 
                     provider.save()
                     updated_count += 1
                 except Provider.DoesNotExist:
                     # This provider is not in our system, so we don't need to do anything.
                     pass
+                except requests.RequestException as e:
+                    self.stdout.write(self.style.WARNING(f"\n  -> API error for provider {provider_id}: {e}. Skipping provider."))
+
 
             self.stdout.write(self.style.SUCCESS(f"Successfully updated {updated_count} providers."))
 

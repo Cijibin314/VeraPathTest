@@ -14,7 +14,6 @@ import requests
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from analytics.models import Patient, Provider, Payer, Referral, ImportLog
-from analytics.mock_data import generate_mock_creation_date
 
 class Command(BaseCommand):
     help = "Incrementally imports appointment data from athenahealth."
@@ -73,11 +72,16 @@ class Command(BaseCommand):
             providers_data = response.json().get("providers", [])
 
             provider_count = 0
+            printed_first = False
             for provider_data in providers_data:
                 provider_id = str(provider_data.get("providerid"))
                 if not provider_id: continue
 
-                _, created = Provider.objects.get_or_create(
+                if not printed_first:
+                    self.stdout.write(f"[ATHENA_DEBUG] First provider ID from API: {provider_id}")
+                    printed_first = True
+
+                _, created = Provider.objects.update_or_create(
                     npi=provider_id, 
                     defaults={"full_name": provider_data.get("displayname") or f"Provider {provider_id}"}
                 )
@@ -132,32 +136,28 @@ class Command(BaseCommand):
                 npi=provider_id, defaults={"full_name": f"Provider {provider_id}"}
             )
 
-            is_mocked = False
             ref_date_str = appt.get("date")
             if ref_date_str:
                 try:
                     ref_date = datetime.strptime(ref_date_str, "%m/%d/%Y").date()
                 except ValueError:
-                    self.stdout.write(self.style.WARNING(f"\n  -> Invalid date format '{ref_date_str}'. Using mock date."))
-                    ref_date = generate_mock_creation_date()
-                    is_mocked = True
+                    self.stdout.write(self.style.WARNING(f"\n  -> Invalid date format '{ref_date_str}'. Using current date."))
+                    ref_date = timezone.now().date()
             else:
-                self.stdout.write(self.style.WARNING(f"\n  -> No creation date from API. Using mock date."))
-                ref_date = generate_mock_creation_date()
-                is_mocked = True
+                self.stdout.write(self.style.WARNING(f"\n  -> No creation date from API. Using current date."))
+                ref_date = timezone.now().date()
 
             _, created = Referral.objects.update_or_create(
                 patient=patient, provider=provider, referral_date=ref_date,
                 defaults={
-                    "status": Referral.Status.PENDING,
-                    "is_creation_date_mocked": is_mocked
+                    "status": Referral.Status.PENDING
                 }
             )
-            self.stdout.write(f"[ATHENA_LOG] Processed Referral: PatientID={patient.original_id}, ProviderID={provider_id}, ReferralDate={ref_date}, IsMocked={is_mocked}, Created={created}")
+            self.stdout.write(f"[ATHENA_LOG] Processed Referral: PatientID={patient.original_id}, ProviderID={provider_id}, ReferralDate={ref_date}, Created={created}")
             if created:
                 created_count += 1
 
-        # Step 4: Log the successful run
+        # Step 5: Log the successful run
         ImportLog.objects.update_or_create(
             task_name=task_name,
             defaults={

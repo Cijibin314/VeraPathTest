@@ -19,14 +19,12 @@ class Hospital(models.Model):
 class Provider(models.Model):
     npi = models.CharField(max_length=20, unique=True)
     full_name = models.CharField(max_length=200)
-    specialty = models.CharField(max_length=120)
+    specialty = models.CharField(max_length=120, blank=True, null=True)
     subspecialty = models.CharField(max_length=120, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=50, blank=True, null=True)
-    insurances_accepted = models.ManyToManyField(Payer, blank=True)
-    hospital_affiliations = models.ManyToManyField(Hospital, blank=True)
     accepting_new_patients = models.BooleanField(default=True, blank=True, null=True)
-    average_wait_time = models.IntegerField(null=True, blank=True, help_text="In days")
+    primary_department = models.CharField(max_length=200, blank=True, null=True)
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.specialty})"
@@ -61,7 +59,6 @@ class Referral(models.Model):
     cost_value = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     referral_date = models.DateField()
     suggested_provider_ids = models.CharField(max_length=200, blank=True)
-    is_creation_date_mocked = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
     ack_at = models.DateTimeField(null=True, blank=True)
     scheduled_at = models.DateTimeField(null=True, blank=True)

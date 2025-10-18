@@ -87,15 +87,37 @@ def dashboard(request):
     return render(request, 'analytics/dashboard.html', context)
 
 
+import json
+import os
+from django.conf import settings
 from django.http import JsonResponse
 
 from django.db.models.functions import Coalesce
 
 # --- Provider list ---
 def provider_list(request):
+    # Load ACO rules from ACO.txt
+    aco_rules = {}
+    aco_file_path = os.path.join(settings.BASE_DIR.parent, 'ACO.txt')
+    try:
+        with open(aco_file_path, 'r') as f:
+            aco_rules = json.load(f)
+    except FileNotFoundError:
+        print(f"[ACO_DEBUG] ACO.txt not found at {aco_file_path}")
+        pass # Handle case where ACO.txt doesn't exist
+
+    in_network_providers_names = set(aco_rules.get('in-network_providers', []))
+    aco_location = aco_rules.get('location', '')
+    aco_city = aco_location.split(',')[0].strip() if aco_location else ''
+    aco_state = aco_location.split(',')[1].strip() if aco_location else ''
+    preferred_payers_names = set(aco_rules.get('preferred_payers', []))
+
     providers = list(Provider.objects.all())
     for provider in providers:
         score = 0
+        is_preferred = False
+
+        # Completeness score calculation (existing logic)
         if provider.full_name: score += 1
         if provider.specialty: score += 1
         if provider.subspecialty: score += 1
@@ -103,12 +125,19 @@ def provider_list(request):
         if provider.state: score += 1
         if provider.npi: score += 1
         if provider.accepting_new_patients is not None: score += 1
-        if provider.average_wait_time is not None: score += 1
-        if provider.insurances_accepted.exists(): score += 1
-        if provider.hospital_affiliations.exists(): score += 1
+        if provider.primary_department: score += 1
         provider.completeness_score = score
+        print(f"Provider: {provider.full_name}, Score: {provider.completeness_score}")
 
-    providers.sort(key=lambda p: p.completeness_score, reverse=True)
+        # Apply ACO rules for 'is_preferred'
+        if provider.full_name in in_network_providers_names or \
+           (aco_city and aco_state and provider.city == aco_city and provider.state == aco_state):
+            is_preferred = True
+
+        provider.is_preferred = is_preferred
+
+    # Sort: preferred providers first, then by completeness score
+    providers.sort(key=lambda p: (p.is_preferred, p.completeness_score), reverse=True)
 
     return render(request, 'analytics/provider_list.html', {'providers': providers})
 
@@ -117,6 +146,7 @@ def provider_list(request):
 def provider_search(request):
     query = request.GET.get('q', '').strip()
     providers = Provider.objects.all()
+
     if query:
         providers = providers.filter(
             Q(full_name__icontains=query)
@@ -124,9 +154,66 @@ def provider_search(request):
             | Q(subspecialty__icontains=query)
             | Q(city__icontains=query)
             | Q(state__icontains=query)
+            | Q(primary_department__icontains=query)
         )
-    providers = providers.order_by('full_name')
-    data = list(providers.values('full_name', 'specialty', 'subspecialty', 'city', 'state', 'npi', 'accepting_new_patients', 'average_wait_time'))
+    
+    # Load ACO rules from ACO.txt
+    aco_rules = {}
+    aco_file_path = os.path.join(settings.BASE_DIR.parent, 'ACO.txt')
+    try:
+        with open(aco_file_path, 'r') as f:
+            aco_rules = json.load(f)
+    except FileNotFoundError:
+        pass # Handle case where ACO.txt doesn't exist
+
+    in_network_providers_names = set(aco_rules.get('in-network_providers', []))
+    aco_location = aco_rules.get('location', '')
+    aco_city = aco_location.split(',')[0].strip() if aco_location else ''
+    aco_state = aco_location.split(',')[1].strip() if aco_location else ''
+    preferred_payers_names = set(aco_rules.get('preferred_payers', []))
+
+    # Calculate is_preferred and completeness_score for each provider object
+    for provider in providers:
+        score = 0
+        is_preferred = False
+
+        # Completeness score calculation
+        if provider.full_name: score += 1
+        if provider.specialty: score += 1
+        if provider.subspecialty: score += 1
+        if provider.city: score += 1
+        if provider.state: score += 1
+        if provider.npi: score += 1
+        if provider.accepting_new_patients is not None: score += 1
+        if provider.primary_department: score += 1
+        provider.completeness_score = score
+
+        # Apply ACO rules for 'is_preferred'
+        if provider.full_name in in_network_providers_names or \
+           (aco_city and aco_state and provider.city == aco_city and provider.state == aco_state):
+            is_preferred = True
+
+        provider.is_preferred = is_preferred
+
+    # Sort: preferred providers first, then by completeness score
+    providers = list(providers) # Convert queryset to list for sorting
+    providers.sort(key=lambda p: (p.is_preferred, p.completeness_score), reverse=True)
+
+    # Convert Provider objects to dictionaries for JSON response
+    data = []
+    for provider in providers:
+        data.append({
+            'full_name': provider.full_name,
+            'specialty': provider.specialty,
+            'subspecialty': provider.subspecialty,
+            'primary_department': provider.primary_department,
+            'location': f"{provider.city}, {provider.state}" if provider.city and provider.state else '',
+            'npi': provider.npi,
+            'accepting_new_patients': provider.accepting_new_patients,
+            'is_preferred': provider.is_preferred,
+            'completeness_score': provider.completeness_score,
+        })
+
     return JsonResponse(data, safe=False)
 
 

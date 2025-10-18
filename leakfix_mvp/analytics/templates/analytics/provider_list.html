@@ -3,8 +3,9 @@
 {% block content %}
 <h2>Provider Directory</h2>
 <form id="search-form" method="get" style="margin-bottom: 1rem;">
-  <input type="text" name="q" value="{{ query }}" placeholder="Search providers (name, specialty, city)" style="padding: 0.5rem; width: 300px;" />
+  <input type="text" name="q" value="{{ query }}" placeholder="Search providers (name, specialty, city)" style="padding: 0.5rem; width: 300px;" oninput="searchProviders(event.target.value)" />
 </form>
+<p style="margin-top: 1rem;">⭐ indicates a preferred provider based on ACO contract, geography, or accepted payers.</p>
 
 <table id="provider-table">
   <thead>
@@ -12,34 +13,27 @@
       <th>Name</th>
       <th>Specialty</th>
       <th>Subspecialty</th>
+      <th>Primary Department</th>
       <th>Location</th>
       <th>NPI</th>
       <th>Accepting New Patients</th>
-      <th>Average Wait Time</th>
-      <th>Insurances Accepted</th>
-      <th>Hospital Affiliations</th>
     </tr>
   </thead>
   <tbody>
     {% for provider in providers %}
       <tr>
-        <td>{{ provider.full_name }}</td>
-        <td>{{ provider.specialty }}</td>
-        <td>{{ provider.subspecialty }}</td>
-        <td>{{ provider.city }}, {{ provider.state }}</td>
+        <td>
+          {{ provider.full_name }}
+          {% if provider.is_preferred %}
+            <span title="Preferred Provider">⭐</span>
+          {% endif %}
+        </td>
+        <td>{{ provider.specialty|default_if_none:"" }}</td>
+        <td>{{ provider.subspecialty|default_if_none:"" }}</td>
+        <td>{{ provider.primary_department|default_if_none:"" }}</td>
+        <td>{% if provider.city and provider.state %}{{ provider.city }}, {{ provider.state }}{% endif %}</td>
         <td>{{ provider.npi }}</td>
-        <td>{{ provider.accepting_new_patients }}</td>
-        <td>{{ provider.average_wait_time }} days</td>
-        <td>
-          {% for payer in provider.insurances_accepted.all %}
-            {{ payer.name }}{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-        </td>
-        <td>
-          {% for hospital in provider.hospital_affiliations.all %}
-            {{ hospital.name }}{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-        </td>
+        <td>{{ provider.accepting_new_patients|default_if_none:"" }}</td>
       </tr>
     {% empty %}
       <tr>
@@ -50,29 +44,30 @@
 </table>
 
 <script>
-  const searchInput = document.querySelector('input[name="q"]');
   const providerTableBody = document.querySelector('#provider-table tbody');
+  const searchInput = document.querySelector('input[name="q"]'); // Get the search input element
 
-  searchInput.addEventListener('input', async (event) => {
-    const query = event.target.value;
+  async function searchProviders(query) {
     const response = await fetch(`/providers/search/?q=${query}`);
     const providers = await response.json();
+    console.log("Providers received from AJAX:", providers); // Keep this for debugging if needed
 
-    providerTableBody.innerHTML = '';
+    providerTableBody.innerHTML = ''; // Clear existing table rows
 
     if (providers.length > 0) {
       for (const provider of providers) {
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td>${provider.full_name}</td>
-          <td>${provider.specialty}</td>
-          <td>${provider.subspecialty}</td>
-          <td>${provider.city}, ${provider.state}</td>
+          <td>
+            ${provider.full_name}
+            ${provider.is_preferred ? '<span title="Preferred Provider">⭐</span>' : ''}
+          </td>
+          <td>${provider.specialty || ''}</td>
+          <td>${provider.subspecialty || ''}</td>
+          <td>${provider.primary_department || ''}</td>
+          <td>${provider.location || ''}</td>
           <td>${provider.npi}</td>
-          <td>${provider.accepting_new_patients}</td>
-          <td>${provider.average_wait_time} days</td>
-          <td></td>
-          <td></td>
+          <td>${provider.accepting_new_patients === null ? '' : provider.accepting_new_patients}</td>
         `;
         providerTableBody.appendChild(row);
       }
@@ -81,6 +76,14 @@
       row.innerHTML = '<td colspan="9">No providers found.</td>';
       providerTableBody.appendChild(row);
     }
+  }
+
+  // Call searchProviders on initial page load with the current query value
+  searchProviders(searchInput.value);
+
+  // Add event listener for input changes
+  searchInput.addEventListener('input', (event) => {
+    searchProviders(event.target.value);
   });
 </script>
 
