@@ -14,5 +14,10 @@ urlpatterns = [
     path('invoices/<int:pk>/', views.invoice_detail, name='invoice_detail'),
     path('metrics/<str:metric>/', views.metric_detail, name='metric_detail'),
     path('specialties/<str:specialty>/', views.specialty_detail, name='specialty_detail'),
+    path('find-slots/', views.find_provider_slots, name='find_provider_slots'),
+    path('provider-details/<str:npi>/', views.get_provider_details_ajax, name='get_provider_details_ajax'),
+    path('sorted-providers/', views.get_sorted_providers_ajax, name='get_sorted_providers_ajax'),
+    path('appointment-reasons/', views.get_appointment_reasons_ajax, name='get_appointment_reasons_ajax'),
+    path('provider-departments/<str:npi>/', views.get_provider_departments_ajax, name='get_provider_departments_ajax'),
 
 ]

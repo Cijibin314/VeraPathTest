@@ -109,6 +109,15 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Caching configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+        'TIMEOUT': 300, # Cache for 5 minutes (300 seconds)
+    }
+}
+
 # Login configuration: redirect users to admin login by default and back to their destination
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'

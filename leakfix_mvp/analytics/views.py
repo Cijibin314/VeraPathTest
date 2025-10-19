@@ -13,6 +13,7 @@ from .models import (
 )
 from .forms import ReferralForm
 from analytics.ai_utils import generate_suggestions
+import logging
 
 # --- KPI dashboard ---
 def dashboard(request):
@@ -266,21 +267,34 @@ def create_referral(request):
     if request.method == 'POST':
         form = ReferralForm(request.POST)
         if form.is_valid():
+            # Load ACO rules to determine in-network status
+            aco_rules = {}
+            aco_file_path = os.path.join(settings.BASE_DIR.parent, 'ACO.txt')
+            try:
+                with open(aco_file_path, 'r') as f:
+                    aco_rules = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                pass # If file is missing or invalid, treat all as out-of-network
+
+            in_network_providers_npi = set(str(n) for n in aco_rules.get('in-network_providers', []))
+
+            provider = form.cleaned_data['provider']
+            is_in_network = str(provider.npi) in in_network_providers_npi
+
             patient_id = form.cleaned_data['patient_id']
             patient, _ = Patient.objects.get_or_create(original_id=patient_id)
-            provider = form.cleaned_data['provider']
             payer_code = form.cleaned_data.get('payer_code')
             payer = None
             if payer_code:
                 payer, _ = Payer.objects.get_or_create(code=payer_code, defaults={'name': payer_code})
+            
             referral = Referral.objects.create(
                 patient=patient,
                 provider=provider,
                 payer=payer,
-                specialty=form.cleaned_data.get('specialty') or provider.specialty,
-                status=form.cleaned_data['status'],
-                in_network=form.cleaned_data['in_network'],
-                cost_value=form.cleaned_data['cost_value'],
+                specialty=form.cleaned_data.get('specialty') or provider.specialty or '',
+                in_network=is_in_network, # Set automatically
+                is_urgent=form.cleaned_data.get('is_urgent', False),
                 suggested_provider_ids=""
             )
             referral.suggested_provider_ids = ','.join(
@@ -519,6 +533,198 @@ def specialty_detail(request, specialty):
         'avg_attempts': avg_attempts,
     }
     return render(request, 'analytics/specialty_detail.html', context)
+
+
+from django.http import JsonResponse
+from .athena_client import get_token, get
+from datetime import datetime, timedelta
+from django.core.cache import cache
+
+def find_provider_slots(request):
+    provider_id_str = request.GET.get('provider_id')
+    reason_id_str = request.GET.get('reasonid')
+    search_date_str = request.GET.get('search_date') # New parameter
+
+    if not provider_id_str:
+        return JsonResponse({'error': 'provider_id is required'}, status=400)
+
+    try:
+        provider_id = int(provider_id_str)
+        reason_id = int(reason_id_str) if reason_id_str else None
+
+        token = get_token()
+        practice_id = '195900' 
+        
+        departments_data = get("departments", practice_id, token, params={"limit": 200})
+        departments = departments_data.get('departments', [])
+        
+        all_open_slots = []
+
+        if search_date_str:
+            start_date = search_date_str
+            end_date = search_date_str
+        else:
+            start_date = datetime.now().strftime("%m/%d/%Y")
+            end_date = (datetime.now() + timedelta(days=90)).strftime("%m/%d/%Y")
+
+        for dept in departments:
+            dept_id = int(dept['departmentid'])
+            # Create a unique cache key for this specific API call
+            cache_key = f'athena_open_slots_{practice_id}_{dept_id}_{provider_id}_{start_date}_{end_date}_{reason_id}'
+            cached_slots_data = cache.get(cache_key)
+
+            if cached_slots_data:
+                slots_data = cached_slots_data
+            else:
+                params = {
+                    "departmentid": dept_id,
+                    "providerid": provider_id,
+                    "startdate": start_date,
+                    "enddate": end_date,
+                }
+                if reason_id:
+                    params['reasonid'] = reason_id
+
+                slots_data = get("appointments/open", practice_id, token, params=params)
+                # Cache the response for 5 minutes
+                cache.set(cache_key, slots_data, 300)
+
+            if slots_data and slots_data.get('appointments'):
+                for slot in slots_data.get('appointments'):
+                    all_open_slots.append({
+                        'date': slot.get('date'),
+                        'time': slot.get('starttime'),
+                        'department': dept.get('name'),
+                    })
+        
+        return JsonResponse(all_open_slots, safe=False)
+
+    except Exception as e:
+        # Log the full error for debugging
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def get_provider_details_ajax(request, npi):
+    try:
+        provider = Provider.objects.get(npi=npi)
+        logging.info(f"Raw full_name for NPI {provider.npi} in get_provider_details_ajax: '{provider.full_name}'")
+        data = {
+            'npi': provider.npi,
+            'full_name': provider.full_name.strip() or 'No Name',
+            'specialty': provider.specialty or '',
+            'subspecialty': provider.subspecialty or '',
+            'city': provider.city or '',
+            'state': provider.state or '',
+            'primary_department': provider.primary_department or '',
+            'accepting_new_patients': provider.accepting_new_patients,
+        }
+        return JsonResponse(data)
+    except Provider.DoesNotExist:
+        return JsonResponse({'error': 'Provider not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def get_sorted_providers_ajax(request):
+    specialty = request.GET.get('specialty', '')
+    
+    all_providers = list(Provider.objects.all())
+
+    # Calculate completeness score for all providers
+    for provider in all_providers:
+        score = 0
+        if provider.full_name: score += 1
+        if provider.specialty: score += 1
+        if provider.subspecialty: score += 1
+        if provider.city: score += 1
+        if provider.state: score += 1
+        if provider.npi: score += 1
+        if provider.accepting_new_patients is not None: score += 1
+        if provider.primary_department: score += 1
+        provider.completeness_score = score
+
+    if specialty:
+        # Separate providers into matching and non-matching specialty groups
+        matching_specialty_providers = [p for p in all_providers if p.specialty and p.specialty.lower() == specialty.lower()]
+        other_providers = [p for p in all_providers if not p.specialty or p.specialty.lower() != specialty.lower()]
+
+        # Sort each group by completeness_score (descending) then full_name (ascending)
+        matching_specialty_providers.sort(key=lambda p: (p.completeness_score, p.full_name.strip() or 'No Name'), reverse=True)
+        other_providers.sort(key=lambda p: (p.completeness_score, p.full_name.strip() or 'No Name'), reverse=True)
+
+        # Combine, with matching specialty providers first
+        providers_to_return = matching_specialty_providers + other_providers
+    else:
+        # If no specialty selected, sort all providers by completeness_score (descending) then full_name (ascending)
+        all_providers.sort(key=lambda p: (p.completeness_score, p.full_name.strip() or 'No Name'), reverse=True)
+        providers_to_return = all_providers
+
+    provider_data = []
+    for p in providers_to_return:
+        logging.info(f"Raw full_name for NPI {p.npi} in get_sorted_providers_ajax: '{p.full_name}'")
+        provider_data.append({'npi': p.npi, 'full_name': p.full_name.strip() or 'No Name', 'specialty': p.specialty or ''})
+    return JsonResponse(provider_data, safe=False)
+
+def get_appointment_reasons_ajax(request):
+    provider_id = request.GET.get('provider_id')
+    department_id = request.GET.get('department_id')
+
+    if not provider_id or not department_id:
+        return JsonResponse({'error': 'provider_id and department_id are required'}, status=400)
+
+    practice_id = '195900'
+    cache_key = f'athena_reasons_{practice_id}_{provider_id}_{department_id}'
+    cached_reasons = cache.get(cache_key)
+
+    if cached_reasons:
+        return JsonResponse(cached_reasons, safe=False)
+
+    try:
+        token = get_token()
+        params = {
+            'providerid': provider_id,
+            'departmentid': department_id,
+        }
+        reasons_data = get("patientappointmentreasons", practice_id, token, params=params)
+        
+        reasons_list = []
+        if reasons_data and 'patientappointmentreasons' in reasons_data:
+            for reason in reasons_data['patientappointmentreasons']:
+                reasons_list.append({
+                    'id': reason.get('reasonid'),
+                    'name': reason.get('reason'),
+                })
+        
+        cache.set(cache_key, reasons_list, 3600) # Cache for 1 hour
+        return JsonResponse(reasons_list, safe=False)
+
+    except Exception as e:
+        logging.error(f"Error fetching appointment reasons: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def get_provider_departments_ajax(request, npi=None):
+    practice_id = '195900'
+    token = get_token()
+    departments_list = []
+    usual_dept_id = None
+
+    if npi:
+        provider_details_data = get(f"providers/{npi}", practice_id, token, params={"showusualdepartmentguessthreshold": 0.5})
+        if provider_details_data and provider_details_data[0]:
+            usual_dept_id = provider_details_data[0].get('usualdepartmentid')
+
+    # Fetch all departments
+    all_departments_data = get("departments", practice_id, token, params={"limit": 200})
+    if all_departments_data and all_departments_data.get('departments'):
+        for dept in all_departments_data['departments']:
+            departments_list.append({'id': dept.get('departmentid'), 'name': dept.get('name')})
+
+    # Sort to put the usual department at the top
+    if usual_dept_id:
+        departments_list.sort(key=lambda x: str(x.get('id')) != str(usual_dept_id))
+
+    return JsonResponse(departments_list, safe=False)
 
 
 # --- Delete referral ---

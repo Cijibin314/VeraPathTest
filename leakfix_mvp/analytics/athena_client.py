@@ -1,6 +1,10 @@
 import requests
 from urllib.parse import urlencode
 import os
+import logging
+
+# Configure basic logging to print to the console
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # These values are now read from environment variables for security.
 # Populate them in your .env file.
@@ -31,6 +35,10 @@ def get(endpoint, practice_id, token, params=None):
     base_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}" 
     url = f"{base_url}/{endpoint.lstrip('/')}"
     headers = {"Authorization": f"Bearer {token}"}
+
+    # Log the request details before sending
+    logging.info(f"Athena GET Request - URL: {url}, Params: {params}")
+
     response = requests.get(url, headers=headers, params=params or {})
     response.raise_for_status()
     return response.json()

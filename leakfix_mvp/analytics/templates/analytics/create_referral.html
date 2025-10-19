@@ -2,14 +2,31 @@
 
 {% block content %}
 <h2>Create Referral</h2>
-<form method="post">
+<form id="new-referral-form">
   {% csrf_token %}
   <table>
     {% for field in form %}
       <tr>
         <th>{{ field.label_tag }}</th>
         <td>
-          {{ field }}
+          {% if field.name == 'specialty' %}
+            {{ field }}
+          {% elif field.name == 'provider' %}
+            {{ field }}
+          {% elif field.name == 'department' %}
+            <select name="department" id="id_department" style="width: 100%; padding: 0.5rem;">
+                <option value="">--- select department ---</option>
+            </select>
+          {% elif field.name == 'reasonid' %}
+            <select name="reasonid" id="id_reasonid" style="width: 100%; padding: 0.5rem;">
+                <option value="">--- select reason ---</option>
+            </select>
+          {% else %}
+            {{ field }}
+          {% endif %}
+          {% if field.help_text %}
+            <small style="display: block; color: #666;">{{ field.help_text }}</small>
+          {% endif %}
           {% for error in field.errors %}
             <div style="color: red;">{{ error }}</div>
           {% endfor %}
@@ -17,6 +34,356 @@
       </tr>
     {% endfor %}
   </table>
-  <button type="submit" style="margin-top: 1rem; padding: 0.5rem 1rem;">Save Referral</button>
+  <input type="date" id="search-date" style="margin-left: 1rem; padding: 0.5rem;" />
+  <button type="button" id="search-slots-btn" style="margin-top: 1rem; padding: 0.5rem 1rem;">Search For Open Slots</button>
 </form>
+
+<hr style="margin-top: 2rem; margin-bottom: 2rem;">
+
+<h3>Available Slots</h3>
+<div id="results-container">
+    <table id="slots-table" style="display: none;">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Department</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Results will be inserted here by JavaScript -->
+        </tbody>
+    </table>
+    <p id="loading-indicator" style="display: none;">Searching for open slots<span class="animated-dots"><span>.</span><span>.</span><span>.</span></span></p>
+    <p id="no-results-message" style="display: none;">No open slots found for the selected criteria.</p>
+</div>
+
+<style>
+    /* CSS for animated dots */
+    .animated-dots span {
+        opacity: 0;
+        animation: blink 1.4s infinite;
+    }
+
+    .animated-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .animated-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes blink {
+        0% { opacity: 0; }
+        50% { opacity: 1; }
+        100% { opacity: 0; }
+    }
+
+    /* Styling for specialty dropdown */
+    select[name="specialty"] {
+        width: 100%;
+        padding: 0.5rem;
+    }
+</style>
+
+<script>
+    const form = document.getElementById('new-referral-form');
+    const providerSelect = form.querySelector('[name="provider"]');
+    const departmentSelect = form.querySelector('[name="department"]');
+    const reasonIdSelect = form.querySelector('[name="reasonid"]');
+    const searchDateInput = document.getElementById('search-date');
+    const patientIdInput = form.querySelector('[name="patient_id"]');
+    const specialtyInput = form.querySelector('[name="specialty"]');
+    const searchButton = document.getElementById('search-slots-btn');
+    const table = document.getElementById('slots-table');
+    const tableBody = table.querySelector('tbody');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const noResultsMessage = document.getElementById('no-results-message');
+
+    let allReasons = [];
+    let allDepartments = [];
+
+    // --- Persistence Logic ---
+    const STORAGE_KEYS = {
+        PROVIDER: 'newReferralProvider',
+        DEPARTMENT: 'newReferralDepartment',
+        REASON_ID: 'newReferralReasonId',
+        SEARCH_DATE: 'newReferralSearchDate',
+        PATIENT_ID: 'newReferralPatientId',
+    };
+
+    function saveFormState() {
+        sessionStorage.setItem(STORAGE_KEYS.PROVIDER, providerSelect.value);
+        sessionStorage.setItem(STORAGE_KEYS.DEPARTMENT, departmentSelect.value);
+        sessionStorage.setItem(STORAGE_KEYS.REASON_ID, reasonIdSelect.value);
+        sessionStorage.setItem(STORAGE_KEYS.SEARCH_DATE, searchDateInput.value);
+        sessionStorage.setItem(STORAGE_KEYS.PATIENT_ID, patientIdInput.value);
+    }
+
+    function loadFormState() {
+        const storedProvider = sessionStorage.getItem(STORAGE_KEYS.PROVIDER);
+        const storedDepartment = sessionStorage.getItem(STORAGE_KEYS.DEPARTMENT);
+        const storedReasonId = sessionStorage.getItem(STORAGE_KEYS.REASON_ID);
+        const storedSearchDate = sessionStorage.getItem(STORAGE_KEYS.SEARCH_DATE);
+        const storedPatientId = sessionStorage.getItem(STORAGE_KEYS.PATIENT_ID);
+
+        if (storedProvider) {
+            providerSelect.value = storedProvider;
+        }
+        if (storedDepartment) {
+            departmentSelect.value = storedDepartment;
+        }
+        if (storedReasonId) {
+            reasonIdSelect.value = storedReasonId;
+        }
+        if (storedSearchDate) {
+            searchDateInput.value = storedSearchDate;
+        }
+        if (storedPatientId) {
+            patientIdInput.value = storedPatientId;
+        }
+    }
+
+    // --- Department Dropdown Logic ---
+    async function fetchAndPopulateDepartments(providerNpi) {
+        departmentSelect.innerHTML = '<option value="">--- loading departments ---</option>';
+        departmentSelect.disabled = true;
+        try {
+            const url = providerNpi ? `/provider-departments/${providerNpi}/` : '/provider-departments/';
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            allDepartments = await response.json();
+            populateDepartmentDropdown(allDepartments);
+            departmentSelect.disabled = false;
+            const storedDepartment = sessionStorage.getItem(STORAGE_KEYS.DEPARTMENT);
+            if (storedDepartment) {
+                departmentSelect.value = storedDepartment;
+            }
+            fetchAndPopulateReasons();
+        } catch (error) {
+            console.error('Error fetching departments:', error);
+            departmentSelect.innerHTML = '<option value="">--- error loading departments ---</option>';
+            departmentSelect.disabled = true;
+        }
+    }
+
+    function populateDepartmentDropdown(departmentsToDisplay) {
+        departmentSelect.innerHTML = '<option value="">--- select department ---</option>';
+        departmentsToDisplay.forEach((dept, index) => {
+            const option = document.createElement('option');
+            option.value = dept.id;
+            option.textContent = dept.name;
+            if (index === 0) {
+                option.textContent += ' * most often department';
+            }
+            departmentSelect.appendChild(option);
+        });
+    }
+
+    // --- Reason Dropdown Logic ---
+    async function fetchAndPopulateReasons() {
+        const selectedProviderId = providerSelect.value;
+        const selectedDepartmentId = departmentSelect.value;
+
+        if (!selectedProviderId || !selectedDepartmentId) {
+            reasonIdSelect.innerHTML = '<option value="">--- select provider and department ---</option>';
+            reasonIdSelect.disabled = true;
+            return;
+        }
+
+        reasonIdSelect.innerHTML = '<option value="">--- loading reasons ---</option>';
+        reasonIdSelect.disabled = true;
+
+        try {
+            const params = new URLSearchParams();
+            params.append('provider_id', selectedProviderId);
+            params.append('department_id', selectedDepartmentId);
+            const response = await fetch(`/appointment-reasons/?${params.toString()}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            allReasons = await response.json();
+            populateReasonDropdown(allReasons);
+            reasonIdSelect.disabled = false;
+            const storedReasonId = sessionStorage.getItem(STORAGE_KEYS.REASON_ID);
+            if (storedReasonId) {
+                reasonIdSelect.value = storedReasonId;
+            }
+        } catch (error) {
+            console.error('Error fetching appointment reasons:', error);
+            reasonIdSelect.innerHTML = '<option value="">--- error loading reasons ---</option>';
+            reasonIdSelect.disabled = true;
+        }
+    }
+
+    function populateReasonDropdown(reasonsToDisplay) {
+        reasonIdSelect.innerHTML = '<option value="">--- select reason ---</option>';
+        reasonsToDisplay.forEach(reason => {
+            const option = document.createElement('option');
+            option.value = reason.id;
+            option.textContent = reason.name;
+            reasonIdSelect.appendChild(option);
+        });
+    }
+
+    // --- Event Listeners and Initial Load ---
+    providerSelect.addEventListener('change', () => {
+        saveFormState();
+        autoPopulateSpecialty();
+        fetchAndPopulateDepartments(providerSelect.value);
+    });
+    departmentSelect.addEventListener('change', () => {
+        saveFormState();
+        fetchAndPopulateReasons();
+    });
+    reasonIdSelect.addEventListener('change', saveFormState);
+    searchDateInput.addEventListener('change', saveFormState);
+    patientIdInput.addEventListener('input', saveFormState);
+    specialtyInput.addEventListener('change', () => {
+        saveFormState();
+        sortProviderDropdown();
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadFormState();
+        if (providerSelect.value) {
+            autoPopulateSpecialty();
+            fetchAndPopulateDepartments(providerSelect.value);
+        }
+        if (!providerSelect.value && specialtyInput.value) {
+            sortProviderDropdown();
+        }
+    });
+
+    // --- Helper Functions ---
+    async function autoPopulateSpecialty() {
+        const selectedNpi = providerSelect.value;
+        if (selectedNpi) {
+            try {
+                const response = await fetch(`/provider-details/${selectedNpi}/`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const providerDetails = await response.json();
+                if (providerDetails.specialty) {
+                    specialtyInput.value = providerDetails.specialty;
+                } else {
+                    specialtyInput.value = '';
+                }
+            } catch (error) {
+                console.error('Error fetching provider details:', error);
+                specialtyInput.value = '';
+            }
+        } else {
+            specialtyInput.value = '';
+        }
+    }
+
+    async function sortProviderDropdown() {
+        if (providerSelect.value) {
+            return;
+        }
+        const selectedSpecialty = specialtyInput.value;
+        let url = '/sorted-providers/';
+        if (selectedSpecialty) {
+            url += `?specialty=${encodeURIComponent(selectedSpecialty)}`;
+        }
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const sortedProviders = await response.json();
+            const currentProviderValue = providerSelect.value;
+            providerSelect.innerHTML = '<option value="">--- select provider ---</option>';
+            sortedProviders.forEach(provider => {
+                const option = document.createElement('option');
+                option.value = provider.npi;
+                option.textContent = provider.full_name + (provider.specialty ? ` (${provider.specialty})` : '');
+                providerSelect.appendChild(option);
+            });
+            if (currentProviderValue) {
+                providerSelect.value = currentProviderValue;
+            }
+        } catch (error) {
+            console.error('Error sorting providers:', error);
+        }
+    }
+
+    // --- Search Logic ---
+    searchButton.addEventListener('click', async () => {
+        const providerId = providerSelect.value;
+        const departmentId = departmentSelect.value;
+        const reasonId = reasonIdSelect.value;
+        const searchDate = searchDateInput.value;
+        const payerCode = form.querySelector('[name="payer_code"]').value;
+
+        // --- Validation ---
+        if (!patientIdInput.value) {
+            alert('Please enter a Patient ID.');
+            return;
+        }
+        if (!providerId) {
+            alert('Please select a Provider.');
+            return;
+        }
+        if (!departmentId) {
+            alert('Please select a Department.');
+            return;
+        }
+        if (!payerCode) {
+            alert('Please enter a Payer Code.');
+            return;
+        }
+        if (!reasonId) {
+            alert('Please select a Reason.');
+            return;
+        }
+
+        table.style.display = 'none';
+        noResultsMessage.style.display = 'none';
+        loadingIndicator.style.display = 'block';
+        tableBody.innerHTML = '';
+
+        try {
+            const params = new URLSearchParams();
+            params.append('provider_id', providerId);
+            params.append('department_id', departmentId);
+            params.append('reasonid', reasonId);
+            if (searchDate) {
+                const [year, month, day] = searchDate.split('-');
+                params.append('search_date', `${month}/${day}/${year}`);
+            }
+
+            const response = await fetch(`/find-slots/?${params.toString()}`);
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const slots = await response.json();
+
+            loadingIndicator.style.display = 'none';
+
+            if (slots.length > 0) {
+                slots.forEach(slot => {
+                    const formattedTime = new Date(`2000/01/01 ${slot.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+                    const row = tableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${slot.date}</td>
+                        <td>${formattedTime}</td>
+                        <td>${slot.department}</td>
+                    `;
+                });
+                table.style.display = 'table';
+            } else {
+                noResultsMessage.style.display = 'block';
+            }
+
+        } catch (error) {
+            loadingIndicator.style.display = 'none';
+            alert(`An error occurred: ${error.message}`);
+            console.error('Error fetching slots:', error);
+        }
+    });
+</script>
+
 {% endblock %}

@@ -64,6 +64,7 @@ class Referral(models.Model):
     scheduled_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    is_urgent = models.BooleanField(default=False)
 
     def __str__(self) -> str:
         return f"Referral ({self.patient}) → {self.provider}"
