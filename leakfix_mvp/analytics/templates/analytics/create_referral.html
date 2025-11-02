@@ -9,10 +9,16 @@
       <tr>
         <th>{{ field.label_tag }}</th>
         <td>
-          {% if field.name == 'specialty' %}
+          {% if field.name == 'patient_id' %}
+            <input type="text" id="patient-search-input" placeholder="Search patient by name or ID" style="width: 40%; padding: 0.5rem;" />
+            <input type="hidden" name="patient_id" id="id_patient_id" />
+            <div id="patient-search-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto; display: none;"></div>
+          {% elif field.name == 'specialty' %}
             {{ field }}
           {% elif field.name == 'provider' %}
-            {{ field }}
+            <select name="provider" id="id_provider" style="width: 100%; padding: 0.5rem;">
+                <option value="">--- select provider ---</option>
+            </select>
           {% elif field.name == 'department' %}
             <select name="department" id="id_department" style="width: 100%; padding: 0.5rem;">
                 <option value="">--- select department ---</option>
@@ -48,6 +54,7 @@
                 <th>Date</th>
                 <th>Time</th>
                 <th>Department</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -79,6 +86,40 @@
         width: 100%;
         padding: 0.5rem;
     }
+
+    /* Base button styling */
+    .action-btn {
+        color: #fff;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    /* Book button specific styling */
+    .book-btn {
+        background-color: #0d6efd; /* Blue */
+    }
+
+    .book-btn:hover:not(:disabled) {
+        background-color: #0a58ca; /* Darker blue on hover */
+    }
+
+    /* Cancel button specific styling (enabled) */
+    .cancel-action-btn {
+        background-color: #6c757d; /* Gray */
+    }
+
+    .cancel-action-btn:hover:not(:disabled) {
+        background-color: #5a6268; /* Darker gray on hover */
+    }
+
+    /* Disabled state for all action buttons */
+    .action-btn:disabled {
+        background-color: #adb5bd; /* Light gray when disabled */
+        cursor: not-allowed;
+    }
 </style>
 
 <script>
@@ -88,6 +129,9 @@
     const reasonIdSelect = form.querySelector('[name="reasonid"]');
     const searchDateInput = document.getElementById('search-date');
     const patientIdInput = form.querySelector('[name="patient_id"]');
+    const patientSearchInput = document.getElementById('patient-search-input');
+    const patientSearchResults = document.getElementById('patient-search-results');
+    console.log('patientSearchInput element:', patientSearchInput); // Debugging
     const specialtyInput = form.querySelector('[name="specialty"]');
     const searchButton = document.getElementById('search-slots-btn');
     const table = document.getElementById('slots-table');
@@ -97,6 +141,7 @@
 
     let allReasons = [];
     let allDepartments = [];
+    let searchTimeout; // Declare searchTimeout here
 
     // --- Persistence Logic ---
     const STORAGE_KEYS = {
@@ -105,6 +150,9 @@
         REASON_ID: 'newReferralReasonId',
         SEARCH_DATE: 'newReferralSearchDate',
         PATIENT_ID: 'newReferralPatientId',
+        PAYER_CODE: 'newReferralPayerCode',
+        IS_URGENT: 'newReferralIsUrgent',
+        PATIENT_NAME: 'newReferralPatientName', // New storage key for search input
     };
 
     function saveFormState() {
@@ -113,6 +161,9 @@
         sessionStorage.setItem(STORAGE_KEYS.REASON_ID, reasonIdSelect.value);
         sessionStorage.setItem(STORAGE_KEYS.SEARCH_DATE, searchDateInput.value);
         sessionStorage.setItem(STORAGE_KEYS.PATIENT_ID, patientIdInput.value);
+        sessionStorage.setItem(STORAGE_KEYS.PAYER_CODE, form.querySelector('[name="payer_code"]').value);
+        sessionStorage.setItem(STORAGE_KEYS.IS_URGENT, form.querySelector('[name="is_urgent"]').checked);
+        sessionStorage.setItem(STORAGE_KEYS.PATIENT_NAME, patientSearchInput.value); // Save patient search input
     }
 
     function loadFormState() {
@@ -121,6 +172,9 @@
         const storedReasonId = sessionStorage.getItem(STORAGE_KEYS.REASON_ID);
         const storedSearchDate = sessionStorage.getItem(STORAGE_KEYS.SEARCH_DATE);
         const storedPatientId = sessionStorage.getItem(STORAGE_KEYS.PATIENT_ID);
+        const storedPayerCode = sessionStorage.getItem(STORAGE_KEYS.PAYER_CODE);
+        const storedIsUrgent = sessionStorage.getItem(STORAGE_KEYS.IS_URGENT);
+        const storedPatientName = sessionStorage.getItem(STORAGE_KEYS.PATIENT_NAME); // Load patient search input
 
         if (storedProvider) {
             providerSelect.value = storedProvider;
@@ -137,6 +191,15 @@
         if (storedPatientId) {
             patientIdInput.value = storedPatientId;
         }
+        if (storedPayerCode) {
+            form.querySelector('[name="payer_code"]').value = storedPayerCode;
+        }
+        if (storedIsUrgent) {
+            form.querySelector('[name="is_urgent"]').checked = (storedIsUrgent === 'true');
+        }
+        if (storedPatientName) {
+            patientSearchInput.value = storedPatientName;
+        }
     }
 
     // --- Department Dropdown Logic ---
@@ -144,7 +207,9 @@
         departmentSelect.innerHTML = '<option value="">--- loading departments ---</option>';
         departmentSelect.disabled = true;
         try {
-            const url = providerNpi ? `/provider-departments/${providerNpi}/` : '/provider-departments/';
+            const selectedOption = providerSelect.options[providerSelect.selectedIndex];
+            const selectedNpi = selectedOption.dataset.npi;
+            const url = selectedNpi ? `/provider-departments/${selectedNpi}/` : '/provider-departments/';
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -227,7 +292,9 @@
     providerSelect.addEventListener('change', () => {
         saveFormState();
         autoPopulateSpecialty();
-        fetchAndPopulateDepartments(providerSelect.value);
+        const selectedOption = providerSelect.options[providerSelect.selectedIndex];
+        const selectedNpi = selectedOption.dataset.npi;
+        fetchAndPopulateDepartments(selectedNpi);
     });
     departmentSelect.addEventListener('change', () => {
         saveFormState();
@@ -236,6 +303,73 @@
     reasonIdSelect.addEventListener('change', saveFormState);
     searchDateInput.addEventListener('change', saveFormState);
     patientIdInput.addEventListener('input', saveFormState);
+    patientSearchInput.addEventListener('keyup', () => {
+        console.log('Patient search input event fired.'); // Debugging
+        clearTimeout(searchTimeout);
+        patientSearchResults.style.display = 'none';
+        patientSearchResults.innerHTML = '';
+        patientIdInput.value = ''; // Clear hidden ID on new search
+        saveFormState();
+
+        const query = patientSearchInput.value.trim();
+        console.log('Patient search query:', query); // Debugging
+        if (query.length < 2) {
+            return;
+        }
+
+        searchTimeout = setTimeout(async () => {
+            console.log('Making patient search AJAX call for query:', query); // Debugging
+            try {
+                const response = await fetch(`/patient-search/?query=${encodeURIComponent(query)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const patients = await response.json();
+                console.log('Patients received from AJAX:', patients); // Debugging
+                displayPatientSearchResults(patients);
+            } catch (error) {
+                console.error('Error searching patients:', error);
+                patientSearchResults.innerHTML = '<div style="padding: 8px; color: red;">Error searching patients.</div>';
+                patientSearchResults.style.display = 'block';
+            }
+        }, 300); // Debounce for 300ms
+    });
+
+    function displayPatientSearchResults(patients) {
+        console.log('Inside displayPatientSearchResults, patients:', patients); // Debugging
+        patientSearchResults.innerHTML = '';
+        if (patients.length > 0) {
+            patients.forEach(patient => {
+                const resultItem = document.createElement('div');
+                resultItem.style.padding = '8px';
+                resultItem.style.borderBottom = '1px solid #eee';
+                resultItem.style.cursor = 'pointer';
+                resultItem.textContent = `${patient.name} (ID: ${patient.patientid})`;
+                resultItem.dataset.patientId = patient.patientid;
+                resultItem.dataset.patientName = patient.name;
+                resultItem.addEventListener('click', (event) => {
+                    patientSearchInput.value = event.target.dataset.patientName;
+                    patientIdInput.value = event.target.dataset.patientId;
+                    patientSearchResults.style.display = 'none';
+                    saveFormState();
+                });
+                patientSearchResults.appendChild(resultItem);
+            });
+            patientSearchResults.style.display = 'block';
+        } else {
+            patientSearchResults.innerHTML = '<div style="padding: 8px;">No patients found.</div>';
+            patientSearchResults.style.display = 'block';
+        }
+    }
+
+    // Hide results when clicking outside
+    document.addEventListener('click', (event) => {
+        if (!patientSearchInput.contains(event.target) && !patientSearchResults.contains(event.target)) {
+            patientSearchResults.style.display = 'none';
+        }
+    });
+    form.querySelector('[name="payer_code"]').addEventListener('input', saveFormState);
+    form.querySelector('[name="is_urgent"]').addEventListener('change', saveFormState);
     specialtyInput.addEventListener('change', () => {
         saveFormState();
         sortProviderDropdown();
@@ -245,7 +379,9 @@
         loadFormState();
         if (providerSelect.value) {
             autoPopulateSpecialty();
-            fetchAndPopulateDepartments(providerSelect.value);
+            const selectedOption = providerSelect.options[providerSelect.selectedIndex];
+            const selectedNpi = selectedOption.dataset.npi;
+            fetchAndPopulateDepartments(selectedNpi);
         }
         if (!providerSelect.value && specialtyInput.value) {
             sortProviderDropdown();
@@ -254,7 +390,8 @@
 
     // --- Helper Functions ---
     async function autoPopulateSpecialty() {
-        const selectedNpi = providerSelect.value;
+        const selectedOption = providerSelect.options[providerSelect.selectedIndex];
+        const selectedNpi = selectedOption.dataset.npi;
         if (selectedNpi) {
             try {
                 const response = await fetch(`/provider-details/${selectedNpi}/`);
@@ -295,7 +432,8 @@
             providerSelect.innerHTML = '<option value="">--- select provider ---</option>';
             sortedProviders.forEach(provider => {
                 const option = document.createElement('option');
-                option.value = provider.npi;
+                option.value = provider.providerid;
+                option.dataset.npi = provider.npi;
                 option.textContent = provider.full_name + (provider.specialty ? ` (${provider.specialty})` : '');
                 providerSelect.appendChild(option);
             });
@@ -315,21 +453,12 @@
         const searchDate = searchDateInput.value;
         const payerCode = form.querySelector('[name="payer_code"]').value;
 
-        // --- Validation ---
-        if (!patientIdInput.value) {
-            alert('Please enter a Patient ID.');
-            return;
-        }
         if (!providerId) {
-            alert('Please select a Provider.');
+            alert('Please select a provider.');
             return;
         }
         if (!departmentId) {
-            alert('Please select a Department.');
-            return;
-        }
-        if (!payerCode) {
-            alert('Please enter a Payer Code.');
+            alert('Please select a department.');
             return;
         }
         if (!reasonId) {
@@ -371,6 +500,7 @@
                         <td>${slot.date}</td>
                         <td>${formattedTime}</td>
                         <td>${slot.department}</td>
+                        <td><button class="action-btn book-btn" data-appointment-id="${slot.appointmentid}" data-appointment-date="${slot.date}" data-appointment-time="${slot.time}">Book</button></td>
                     `;
                 });
                 table.style.display = 'table';
@@ -384,6 +514,155 @@
             console.error('Error fetching slots:', error);
         }
     });
+
+    // --- Booking Logic ---
+    tableBody.addEventListener('click', async (event) => {
+        if (event.target.classList.contains('book-btn')) {
+            const button = event.target;
+            const appointmentId = button.dataset.appointmentId;
+            const appointmentDate = button.dataset.appointmentDate;
+            const appointmentTime = button.dataset.appointmentTime;
+
+            // Gather form data
+            const patientId = patientIdInput.value;
+
+            const providerId = providerSelect.value;
+            const departmentId = departmentSelect.value;
+            const reasonId = reasonIdSelect.value;
+            const isUrgent = form.querySelector('[name="is_urgent"]').checked;
+            const payerCode = form.querySelector('[name="payer_code"]').value;
+            const specialty = specialtyInput.value; // Get specialty from the form
+
+            // Disable button to prevent multiple clicks
+            button.disabled = true;
+            button.textContent = 'Booking...';
+
+            try {
+                // Step 1: Create local Referral object
+                console.log("Before /create-local-referral/ fetch, patientId is:", patientId);
+                const localReferralResponse = await fetch('/create-local-referral/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value,
+                    },
+                    body: JSON.stringify({
+                        patient_id: patientId,
+                        provider_id: providerId,
+                        department_id: departmentId,
+                        reason_id: reasonId,
+                        is_urgent: isUrgent,
+                        payer_code: payerCode,
+                        specialty: specialty,
+                        appointment_date: appointmentDate, // Pass appointment date for local referral creation
+                    }),
+                });
+
+                const localReferralResult = await localReferralResponse.json();
+
+                if (!localReferralResponse.ok) {
+                    throw new Error(localReferralResult.error || 'Failed to create local referral');
+                }
+                const localReferralId = localReferralResult.local_referral_id;
+
+                // Step 2: Book appointment with Athena API
+                console.log("Before /book-appointment/ fetch, patientId is:", patientId);
+                const response = await fetch('/book-appointment/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value,
+                    },
+                    body: JSON.stringify({
+                        appointment_id: appointmentId,
+                        appointment_date: appointmentDate,
+                        appointment_time: appointmentTime,
+                        patient_id: patientId,
+                        department_id: departmentId,
+                        reason_id: reasonId,
+                        is_urgent: isUrgent,
+                        local_referral_id: localReferralId, // Pass local referral ID
+                        insurance_info: {
+                            insurancecompany: payerCode,
+                            insuranceplanname: payerCode,
+                        },
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    console.log('Booked Appointment ID:', result.appointmentid);
+                    button.textContent = 'Booked';
+                    button.disabled = true; // Apply disabled style
+                    button.dataset.bookedId = result.appointmentid; // Store booked ID
+
+                    setTimeout(() => {
+                        button.textContent = 'Cancel';
+                        button.disabled = false; // Enable for cancellation
+                        button.classList.remove('book-btn');
+                        button.classList.add('cancel-action-btn');
+                        console.log('Button after 3s (Cancel state):', button.textContent, button.classList);
+                    }, 3000); // 3-second delay
+
+                } else {
+                    if (response.status === 409) {
+                        alert('This appointment slot is not available. It might have been booked by someone else or is still being processed. Please try another slot or search again in a few moments.');
+                        button.disabled = false;
+                        button.textContent = 'Book';
+                    } else {
+                        throw new Error(result.error || 'Booking failed');
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error booking appointment:', error);
+                alert(`Booking failed: ${error.message}`);
+                button.disabled = false;
+                button.textContent = 'Book';
+            }
+        } else if (event.target.classList.contains('cancel-action-btn')) {
+            console.log('Cancel button clicked!', event.target.textContent, event.target.classList);
+            const button = event.target;
+            const appointmentId = button.dataset.bookedId; // Retrieve booked ID
+            const patientId = patientIdInput.value; // Patient ID from form
+
+            button.disabled = true;
+            button.textContent = 'Cancelling...';
+
+            try {
+                const response = await fetch('/cancel-appointment/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value,
+                    },
+                    body: JSON.stringify({
+                        appointment_id: appointmentId,
+                        patient_id: patientId,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    console.log('Cancelled Appointment ID:', appointmentId);
+                    button.textContent = 'Cancelled';
+                    button.disabled = true; // Keep disabled after cancellation
+                    button.classList.remove('cancel-action-btn');
+                    button.classList.add('cancelled-btn'); // Add a class for final cancelled state
+
+                } else {
+                    throw new Error(result.error || 'Cancellation failed');
+                }
+            }catch (error) {
+                    console.error('Error cancelling appointment:', error);
+                    alert(`Cancellation failed: ${error.message}`);
+                    button.disabled = false;
+                    button.textContent = 'Cancel';
+                }
+            }
+        });
 </script>
 
 {% endblock %}

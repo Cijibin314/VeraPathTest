@@ -1,0 +1,277 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Practice Management</h2>
+
+{% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+            <div class="message {{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="management-grid">
+    <div class="management-main">
+        <div class="management-section">
+            <h3>All Practices</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Athena Practice ID</th>
+                        <th>Location</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for practice in practices %}
+                    <tr data-practice-id="{{ practice.id }}">
+                        <td>{{ practice.name }}</td>
+                        <td>{{ practice.athena_practice_id }}</td>
+                        <td>{{ practice.location }}</td>
+                        <td>
+                            <button class="sync-btn" onclick="startSync('{{ practice.id }}')">Sync with Athena</button>
+                            <form action="" method="post" style="display:inline-block; margin-top: 10px;">
+                                {% csrf_token %}
+                                <input type="hidden" name="practice_id" value="{{ practice.id }}">
+                                <textarea name="in_network_provider_ids" rows="2" placeholder="Paste comma-separated Provider IDs..."></textarea>
+                                <button type="submit" name="update_in_network">Update In-Network</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">No practices found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div id="sync-log-container" style="display: none; margin-top: 1rem;">
+                <h4>Sync Log</h4>
+                <pre id="sync-log" style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1rem; border-radius: 4px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;"></pre>
+            </div>
+        </div>
+
+        <div class="management-section">
+            <h3>Create New Practice</h3>
+            <form action="" method="post">
+                {% csrf_token %}
+                <input type="text" name="name" placeholder="Practice Name" required>
+                <input type="text" name="athena_practice_id" placeholder="Athena Practice ID" required>
+                <input type="text" name="location" placeholder="Location (e.g., Boston, MA)" required>
+                <button type="submit" name="create_practice">Create Practice</button>
+            </form>
+        </div>
+
+        <div class="management-section">
+            <h3>Create New User</h3>
+            <form action="" method="post">
+                {% csrf_token %}
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <select name="practice_id" required>
+                    <option value="" disabled selected>Select a practice</option>
+                    {% for practice in practices %}
+                    <option value="{{ practice.id }}">{{ practice.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" name="create_user">Create User</button>
+            </form>
+        </div>
+
+        <div class="management-section">
+            <h3>Management Commands</h3>
+                        <form onsubmit="runManagementCommand(event)">
+                            {% csrf_token %}
+                            <h4>import_athena</h4>
+                            <input type="hidden" name="command" value="import_athena">
+                            <input type="text" name="practice_id" placeholder="Practice ID" required>
+                            <input type="text" name="client_id" placeholder="Client ID" required>
+                            <input type="text" name="client_secret" placeholder="Client Secret" required>
+                            <button type="submit">Run import_athena</button>
+                        </form>
+            
+                        <form onsubmit="runManagementCommand(event)">
+                            {% csrf_token %}
+                            <h4>import_athena_data</h4>
+                            <input type="hidden" name="command" value="import_athena_data">
+                            <input type="text" name="practice_id" placeholder="Practice ID" required>
+                            <input type="number" name="page_size" placeholder="Page Size (default: 25)">
+                            <button type="submit">Run import_athena_data</button>
+                        </form>
+            
+                        <form onsubmit="runManagementCommand(event)">
+                            {% csrf_token %}
+                            <h4>import_provider_data</h4>
+                            <input type="hidden" name="command" value="import_provider_data">
+                            <input type="text" name="practice_id" placeholder="Practice ID" required>
+                            <button type="submit">Run import_provider_data</button>
+                        </form>
+                    </div>
+                </div>
+                <div class="management-console">
+                    <div class="management-section">
+                        <h3>Command Output</h3>
+                        <pre id="command-output-log" class="console-output">{% if command_output %}{{ command_output }}{% else %}Run a command to see its output here...{% endif %}</pre>
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+            .management-grid {
+                display: grid;
+                grid-template-columns: 2fr 1fr;
+                gap: 2rem;
+            }
+            
+            .management-main {
+                /* styles for the main content area */
+            }
+            
+            .management-console {
+                /* styles for the console area */
+            }
+            
+            .console-output {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                padding: 1rem;
+                border-radius: 4px;
+                max-height: 600px;
+                overflow-y: auto;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+            
+            .management-section {
+                background-color: #fff;
+                padding: 1.5rem;
+                border-radius: 8px;
+                margin-bottom: 2rem;
+                border: 1px solid #e5e7eb;
+            }
+            
+            .management-section h3 {
+                margin-top: 0;
+            }
+            .management-section input,
+            .management-section select,
+            .management-section textarea {
+                display: block;
+                width: 100%;
+                padding: 0.75rem;
+                margin-bottom: 1rem;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            .management-section button {
+                  background-color: #0d6efd;
+                  color: #fff;
+                  border: none;
+                  padding: 0.75rem 1.5rem;
+                  border-radius: 4px;
+                  font-size: 1rem;
+                  cursor: pointer;
+            }
+            .management-section button:disabled {
+                background-color: #6c757d;
+                cursor: not-allowed;
+            }
+            
+            .messages {
+                margin-bottom: 1.5rem;
+            }
+            .message {
+                padding: 1rem;
+                border-radius: 4px;
+                color: #fff;
+            }
+            .message.success {
+                background-color: #198754;
+            }
+            .message.warning {
+                background-color: #ffc107;
+                color: #000;
+            }
+            .message.error {
+                background-color: #dc3545;
+            }
+            .message.info {
+                background-color: #0dcaf0;
+                color: #000;
+            }
+            </style>
+            
+            <script>
+              const commandOutputLog = document.getElementById('command-output-log');
+            
+              function runManagementCommand(event) {
+                event.preventDefault();
+                const form = event.target;
+                const formData = new FormData(form);
+                const params = new URLSearchParams();
+            
+                for (const pair of formData.entries()) {
+                  params.append(pair[0], pair[1]);
+                }
+            
+                commandOutputLog.textContent = 'Initializing command...\n';
+                const url = `/management/stream-command/?${params.toString()}`;
+                const evtSource = new EventSource(url);
+            
+                evtSource.onmessage = function(event) {
+                  commandOutputLog.textContent += event.data + '\n';
+                  commandOutputLog.scrollTop = commandOutputLog.scrollHeight;
+                };
+            
+                evtSource.onerror = function(event) {
+                  commandOutputLog.textContent += 'An error occurred. Connection closed.\n';
+                  evtSource.close();
+                };
+            
+                evtSource.addEventListener("close", function(event) {
+                    commandOutputLog.textContent += 'Connection closed by server.\n';
+                    evtSource.close();
+                });
+              }
+            
+            function startSync(practiceId) {
+                const logContainer = document.getElementById('sync-log-container');
+                const logEl = document.getElementById('sync-log');
+                const syncButton = document.querySelector(`tr[data-practice-id="${practiceId}"] .sync-btn`);
+                const inNetworkTextarea = document.querySelector(`tr[data-practice-id="${practiceId}"] textarea[name="in_network_provider_ids"]`);
+            
+                // Show log and disable button
+                logContainer.style.display = 'block';
+                logEl.textContent = 'Initializing sync...\n';
+                syncButton.disabled = true;
+                syncButton.textContent = 'Syncing...';
+            
+                const inNetworkIds = inNetworkTextarea.value;
+                const url = `/management/sync-stream/?practice_id=${practiceId}&in_network_provider_ids=${encodeURIComponent(inNetworkIds)}`;
+            
+                const evtSource = new EventSource(url);
+            
+                evtSource.addEventListener("message", function(event) {
+                    logEl.textContent += event.data + '\n';
+                    logEl.scrollTop = logEl.scrollHeight; // Auto-scroll
+                });
+            
+                evtSource.addEventListener("error", function(event) {
+                    logEl.textContent += 'An error occurred. Connection closed.\n';
+                    evtSource.close();
+                    syncButton.disabled = false;
+                    syncButton.textContent = 'Sync with Athena';
+                });
+            
+                evtSource.addEventListener("close", function(event) {
+                    logEl.textContent += 'Connection closed by server.\n';
+                    evtSource.close();
+                    syncButton.disabled = false;
+                    syncButton.textContent = 'Sync with Athena';
+                });
+            }
+            </script>
+
+{% endblock %}

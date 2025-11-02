@@ -118,6 +118,7 @@ CACHES = {
     }
 }
 
-# Login configuration: redirect users to admin login by default and back to their destination
-LOGIN_URL = '/admin/login/'
+# Login configuration: redirect users to the login page and then to the dashboard
+LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
+LOGOUT_REDIRECT_URL = '/login/'

@@ -1,5 +1,6 @@
 import hashlib
 from decimal import Decimal
+from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
@@ -16,8 +17,24 @@ class Hospital(models.Model):
     def __str__(self) -> str:
         return self.name
 
+class Practice(models.Model):
+    name = models.CharField(max_length=200)
+    athena_practice_id = models.CharField(max_length=50, unique=True)
+    location = models.CharField(max_length=200, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    practice = models.ForeignKey(Practice, on_delete=models.CASCADE, null=True, blank=True)
+
+    def __str__(self):
+        return self.user.username
+
 class Provider(models.Model):
-    npi = models.CharField(max_length=20, unique=True)
+    practice = models.ForeignKey(Practice, on_delete=models.CASCADE, null=True, blank=True)
+    npi = models.CharField(max_length=20, blank=True, null=True)
     full_name = models.CharField(max_length=200)
     specialty = models.CharField(max_length=120, blank=True, null=True)
     subspecialty = models.CharField(max_length=120, blank=True, null=True)
@@ -25,6 +42,24 @@ class Provider(models.Model):
     state = models.CharField(max_length=50, blank=True, null=True)
     accepting_new_patients = models.BooleanField(default=True, blank=True, null=True)
     primary_department = models.CharField(max_length=200, blank=True, null=True)
+    is_in_network = models.BooleanField(default=False)
+
+    # New fields from JSON structure
+    providerid = models.IntegerField(blank=True, null=True)
+    firstname = models.CharField(max_length=100, blank=True, null=True)
+    lastname = models.CharField(max_length=100, blank=True, null=True)
+    middleinitial = models.CharField(max_length=1, blank=True, null=True)
+    sex = models.CharField(max_length=1, blank=True, null=True)
+    entitytype = models.CharField(max_length=50, blank=True, null=True)
+    ansinamecode = models.CharField(max_length=255, blank=True, null=True)
+    hideinportal = models.BooleanField(default=False, blank=True, null=True)
+    schedulingname = models.CharField(max_length=200, blank=True, null=True)
+    billable = models.BooleanField(default=False, blank=True, null=True)
+    ansispecialtycode = models.CharField(max_length=50, blank=True, null=True)
+    createencounteroncheckin = models.BooleanField(default=False, blank=True, null=True)
+
+    class Meta:
+        unique_together = (('practice', 'providerid'),)
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.specialty})"
@@ -51,7 +86,7 @@ class Referral(models.Model):
         CANCELLED = 'cancelled', 'Cancelled'
 
     patient = models.ForeignKey(Patient, on_delete=models.PROTECT)
-    provider = models.ForeignKey(Provider, on_delete=models.PROTECT)
+    provider = models.ForeignKey(Provider, on_delete=models.SET_NULL, null=True)
     payer = models.ForeignKey(Payer, on_delete=models.SET_NULL, null=True, blank=True)
     specialty = models.CharField(max_length=120, blank=True)  # NEW: record referral specialty
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
@@ -65,6 +100,7 @@ class Referral(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     is_urgent = models.BooleanField(default=False)
+    athena_appointment_id = models.CharField(max_length=50, blank=True, null=True)
 
     def __str__(self) -> str:
         return f"Referral ({self.patient}) → {self.provider}"

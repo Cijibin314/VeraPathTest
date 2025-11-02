@@ -19,5 +19,13 @@ urlpatterns = [
     path('sorted-providers/', views.get_sorted_providers_ajax, name='get_sorted_providers_ajax'),
     path('appointment-reasons/', views.get_appointment_reasons_ajax, name='get_appointment_reasons_ajax'),
     path('provider-departments/<str:npi>/', views.get_provider_departments_ajax, name='get_provider_departments_ajax'),
+    path('provider-departments/', views.get_provider_departments_ajax, name='get_all_departments_ajax'),
+    path('book-appointment/', views.book_appointment_ajax, name='book_appointment_ajax'),
+    path('cancel-appointment/', views.cancel_appointment_ajax, name='cancel_appointment_ajax'),
+    path('create-local-referral/', views.create_local_referral_ajax, name='create_local_referral_ajax'),
+    path('patient-search/', views.patient_search_ajax, name='patient_search_ajax'),
+    path('management/', views.management, name='management'),
+    path('management/stream-command/', views.stream_command_view, name='stream_command_view'),
+    path('management/sync-stream/', views.sync_stream_view, name='sync_stream_view'),
 
 ]

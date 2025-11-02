@@ -2,12 +2,12 @@ from django import forms
 from .models import Referral, Provider
 
 class ReferralForm(forms.Form):
-    patient_id = forms.CharField(label='Patient ID', max_length=120, required=True)
+    patient_id = forms.CharField(label='Patient', max_length=120, required=True)
     specialty = forms.ChoiceField(
         label='Specialty',
         required=False,
         choices=[], # Will be populated dynamically
-        help_text="Optional: specify specialty if provider isn't selected"
+        help_text="Only Optional: specify specialty if provider isn't selected"
     )
     provider = forms.ModelChoiceField(
         queryset=Provider.objects.all(),
@@ -21,8 +21,8 @@ class ReferralForm(forms.Form):
         choices=[], # Will be populated dynamically
         help_text="Select a department for the chosen provider."
     )
-    payer_code = forms.CharField(label='Payer Code', max_length=64, required=True)
-    reasonid = forms.IntegerField(label='Reason ID', required=True)
+    payer_code = forms.CharField(label='Payer Code', max_length=64, required=False)
+    reasonid = forms.IntegerField(label='Reason', required=True)
     is_urgent = forms.BooleanField(label='Is Urgent?', required=False) # Checkboxes don't need required=True
 
     def __init__(self, *args, **kwargs):

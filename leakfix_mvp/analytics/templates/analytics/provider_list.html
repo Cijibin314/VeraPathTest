@@ -7,15 +7,22 @@
 </form>
 <p style="margin-top: 1rem;">⭐ indicates a preferred provider based on ACO contract, geography, or accepted payers.</p>
 
+<script>
+  const searchForm = document.getElementById('search-form');
+  searchForm.addEventListener('submit', (event) => {
+    event.preventDefault(); // Prevent form submission on Enter key
+  });
+</script>
+
 <table id="provider-table">
   <thead>
     <tr>
       <th>Name</th>
       <th>Specialty</th>
-      <th>Subspecialty</th>
       <th>Primary Department</th>
       <th>Location</th>
       <th>NPI</th>
+      <th>Provider ID</th>
       <th>Accepting New Patients</th>
     </tr>
   </thead>
@@ -29,10 +36,10 @@
           {% endif %}
         </td>
         <td>{{ provider.specialty|default_if_none:"" }}</td>
-        <td>{{ provider.subspecialty|default_if_none:"" }}</td>
         <td>{{ provider.primary_department|default_if_none:"" }}</td>
         <td>{% if provider.city and provider.state %}{{ provider.city }}, {{ provider.state }}{% endif %}</td>
-        <td>{{ provider.npi }}</td>
+        <td>{{ provider.npi|default_if_none:"" }}</td>
+        <td>{{ provider.providerid|default_if_none:"" }}</td>
         <td>{{ provider.accepting_new_patients|default_if_none:"" }}</td>
       </tr>
     {% empty %}
@@ -63,10 +70,10 @@
             ${provider.is_preferred ? '<span title="Preferred Provider">⭐</span>' : ''}
           </td>
           <td>${provider.specialty || ''}</td>
-          <td>${provider.subspecialty || ''}</td>
           <td>${provider.primary_department || ''}</td>
           <td>${provider.location || ''}</td>
-          <td>${provider.npi}</td>
+          <td>${provider.npi || ''}</td>
+          <td>${provider.providerid || ''}</td>
           <td>${provider.accepting_new_patients === null ? '' : provider.accepting_new_patients}</td>
         `;
         providerTableBody.appendChild(row);

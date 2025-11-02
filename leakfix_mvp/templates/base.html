@@ -19,7 +19,12 @@
       padding: 0.5rem 1rem;
       display: flex;
       align-items: center;
+      justify-content: space-between; /* Added */
       color: #fff;
+    }
+    .navbar-left {
+        display: flex;
+        align-items: center;
     }
     .navbar-brand {
       font-weight: 600;
@@ -41,6 +46,18 @@
       color: #fff;
       text-decoration: none;
       font-weight: 500;
+    }
+    .navbar-user {
+        display: flex;
+        align-items: center;
+    }
+    .navbar-user span {
+        margin-right: 1rem;
+    }
+    .navbar-user a {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 500;
     }
     .container {
       max-width: 1200px;
@@ -116,14 +133,30 @@
 </head>
 <body>
   <nav class="navbar">
-    <a class="navbar-brand" href="/">VeraPath</a>
-    <ul class="navbar-nav">
-      <li><a href="/dashboard/">Dashboard</a></li>
-      <li><a href="/providers/">Providers</a></li>
-      <li><a href="/referrals/new/">New Referral</a></li>
-      <li><a href="/invoices/">Invoices</a></li>
-      <li><a href="/admin/">Admin</a></li>
-    </ul>
+    <div class="navbar-left">
+        <a class="navbar-brand" href="/">VeraPath</a>
+        <ul class="navbar-nav">
+          <li><a href="/dashboard/">Dashboard</a></li>
+          <li><a href="/providers/">Providers</a></li>
+          <li><a href="/referrals/new/">New Referral</a></li>
+          <li><a href="/invoices/">Invoices</a></li>
+          {% if user.is_superuser %}
+          <li><a href="/admin/">Admin</a></li>
+          <li><a href="{% url 'management' %}">Management</a></li>
+          {% endif %}
+        </ul>
+    </div>
+    <div class="navbar-user">
+        {% if user.is_authenticated %}
+            <span>Welcome, {{ user.username }}</span>
+            <form id="logout-form" method="post" action="{% url 'logout' %}" style="display: inline;">
+                {% csrf_token %}
+                <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">Logout</a>
+            </form>
+        {% else %}
+            <a href="{% url 'login' %}">Login</a>
+        {% endif %}
+    </div>
   </nav>
   <div class="container">
     {% block content %}{% endblock %}

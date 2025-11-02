@@ -45,7 +45,7 @@ class Command(BaseCommand):
                     else:
                         continue
 
-                    provider = Provider.objects.get(npi=provider_id)
+                    provider = Provider.objects.get(providerid=provider_id)
                     if provider_detail.get("displayname"):
                         provider.full_name = provider_detail.get("displayname")
                     else:

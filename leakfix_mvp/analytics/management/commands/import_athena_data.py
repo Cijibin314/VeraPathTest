@@ -65,6 +65,11 @@ class Command(BaseCommand):
 
                 auth = None
                 if refauths_data and refauths_data.get("referralauths"):
+                    # Check if the referral has a provider before proceeding
+                    if not referral_to_update.provider:
+                        self.stdout.write(self.style.WARNING(f"   -> Referral {referral_to_update.id} has no provider. Skipping update."))
+                        continue
+
                     # Try to find a matching auth for the provider
                     provider_npi = referral_to_update.provider.npi
                     for ra_auth in refauths_data.get("referralauths", []):
