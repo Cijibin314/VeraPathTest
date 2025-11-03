@@ -203,13 +203,11 @@
     }
 
     // --- Department Dropdown Logic ---
-    async function fetchAndPopulateDepartments(providerNpi) {
+    async function fetchAndPopulateDepartments(providerId) {
         departmentSelect.innerHTML = '<option value="">--- loading departments ---</option>';
         departmentSelect.disabled = true;
         try {
-            const selectedOption = providerSelect.options[providerSelect.selectedIndex];
-            const selectedNpi = selectedOption.dataset.npi;
-            const url = selectedNpi ? `/provider-departments/${selectedNpi}/` : '/provider-departments/';
+            const url = providerId ? `/provider-departments/${providerId}/` : '/provider-departments/';
             const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -292,9 +290,7 @@
     providerSelect.addEventListener('change', () => {
         saveFormState();
         autoPopulateSpecialty();
-        const selectedOption = providerSelect.options[providerSelect.selectedIndex];
-        const selectedNpi = selectedOption.dataset.npi;
-        fetchAndPopulateDepartments(selectedNpi);
+        fetchAndPopulateDepartments(providerSelect.value);
     });
     departmentSelect.addEventListener('change', () => {
         saveFormState();
@@ -379,9 +375,7 @@
         loadFormState();
         if (providerSelect.value) {
             autoPopulateSpecialty();
-            const selectedOption = providerSelect.options[providerSelect.selectedIndex];
-            const selectedNpi = selectedOption.dataset.npi;
-            fetchAndPopulateDepartments(selectedNpi);
+            fetchAndPopulateDepartments(providerSelect.value);
         }
         if (!providerSelect.value && specialtyInput.value) {
             sortProviderDropdown();
@@ -390,11 +384,10 @@
 
     // --- Helper Functions ---
     async function autoPopulateSpecialty() {
-        const selectedOption = providerSelect.options[providerSelect.selectedIndex];
-        const selectedNpi = selectedOption.dataset.npi;
-        if (selectedNpi) {
+        const selectedProviderId = providerSelect.value;
+        if (selectedProviderId) {
             try {
-                const response = await fetch(`/provider-details/${selectedNpi}/`);
+                const response = await fetch(`/provider-details/${selectedProviderId}/`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }

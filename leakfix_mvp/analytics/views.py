@@ -598,9 +598,9 @@ def find_provider_slots(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-def get_provider_details_ajax(request, npi):
+def get_provider_details_ajax(request, providerid):
     try:
-        provider = Provider.objects.get(npi=npi)
+        provider = Provider.objects.get(providerid=providerid)
         data = {
             'npi': provider.npi,
             'full_name': provider.full_name.strip() or 'No Name',
@@ -632,13 +632,11 @@ def get_sorted_providers_ajax(request):
 
     # De-duplicate providers in Python
     unique_providers = []
-    seen_providers = set()
+    seen_names = set()
     for provider in all_providers_qs:
-        # Use a tuple of fields to identify a unique provider
-        provider_identifier = (provider.npi, provider.full_name)
-        if provider_identifier not in seen_providers:
+        if provider.full_name not in seen_names:
             unique_providers.append(provider)
-            seen_providers.add(provider_identifier)
+            seen_names.add(provider.full_name)
 
     all_providers = unique_providers
 
@@ -722,7 +720,7 @@ def get_appointment_reasons_ajax(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
-def get_provider_departments_ajax(request, npi=None):
+def get_provider_departments_ajax(request, providerid=None):
     try:
         user_practice = request.user.userprofile.practice
         if not user_practice or not user_practice.athena_practice_id:
@@ -730,17 +728,26 @@ def get_provider_departments_ajax(request, npi=None):
         practice_id = user_practice.athena_practice_id
     except (UserProfile.DoesNotExist, AttributeError):
         return JsonResponse({'error': 'Could not determine user\'s practice.'}, status=400)
+
+    provider_npi = None
+    if providerid:
+        try:
+            provider = Provider.objects.get(providerid=providerid)
+            provider_npi = provider.npi
+        except Provider.DoesNotExist:
+            return JsonResponse({'error': 'Provider not found'}, status=404)
+
     token = get_token()
     departments_list = []
     usual_dept_id = None
 
-    if npi:
+    if provider_npi:
         try:
-            provider_details_data = get(f"providers/{npi}", practice_id, token, params={"showusualdepartmentguessthreshold": 0.5})
+            provider_details_data = get(f"providers/{provider_npi}", practice_id, token, params={"showusualdepartmentguessthreshold": 0.5})
             if provider_details_data and provider_details_data[0]:
                 usual_dept_id = provider_details_data[0].get('usualdepartmentid')
         except Exception as e:
-            logging.error(f"Error fetching provider details for NPI {npi}: {e}")
+            logging.error(f"Error fetching provider details for NPI {provider_npi}: {e}")
             # Continue to fetch all departments if provider details fail
 
     # Fetch all departments
