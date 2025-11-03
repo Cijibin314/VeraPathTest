@@ -944,10 +944,10 @@ def patient_search_ajax(request):
     try:
         user_practice = request.user.userprofile.practice
         if not user_practice or not user_practice.athena_practice_id:
-            return JsonResponse({'error': 'User has no practice ID configured.'}, status=400)
+            return JsonResponse([], safe=False)
         practice_id = user_practice.athena_practice_id
     except (UserProfile.DoesNotExist, AttributeError):
-        return JsonResponse({'error': 'Could not determine user\'s practice.'}, status=400)
+        return JsonResponse([], safe=False)
 
     cache_key = f'athena_patient_search_{query}'
     cached_results = cache.get(cache_key)
