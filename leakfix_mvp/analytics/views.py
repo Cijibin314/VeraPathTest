@@ -766,171 +766,180 @@ def get_provider_departments_ajax(request, providerid=None):
 
     return JsonResponse(departments_list, safe=False)
 
+
+
 @login_required
-def book_appointment_ajax(request):
+def search_appointment_reasons_ajax(request):
+    query = request.GET.get('query', '').strip()
+    if not query or len(query) < 2: # API requires at least 2 characters
+        return JsonResponse([], safe=False)
+
+    try:
+        user_practice = request.user.userprofile.practice
+        if not user_practice or not user_practice.athena_practice_id:
+            return JsonResponse([], safe=False)
+        practice_id = user_practice.athena_practice_id
+    except (UserProfile.DoesNotExist, AttributeError):
+        return JsonResponse([], safe=False)
+
+    cache_key = f'athena_referral_order_type_search_{query}'
+    cached_results = cache.get(cache_key)
+
+    if cached_results:
+        return JsonResponse(cached_results, safe=False)
+
+    try:
+        token = get_token()
+        results = []
+
+        params = {'searchvalue': query}
+        logging.info(f"Calling Athena API reference/order/referral with params: {params}")
+        
+        reasons_data = get("reference/order/referral", practice_id, token, params=params)
+        
+        logging.info(f"Raw reasons_data from Athena API: {reasons_data}")
+        
+        if reasons_data: # This endpoint returns a list directly
+            for reason in reasons_data:
+                results.append({
+                    'id': reason.get('ordertypeid'),
+                    'name': reason.get('name'),
+                })
+        
+        logging.info(f"Results after processing: {results}")
+        
+        cache.set(cache_key, results, 300) # Cache for 5 minutes
+        return JsonResponse(results, safe=False)
+
+    except Exception as e:
+        logging.error(f"Error searching appointment reasons: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def create_referral_order_ajax(request):
     if request.method == 'POST':
         try:
             user_practice = request.user.userprofile.practice
             if not user_practice or not user_practice.athena_practice_id:
+                logging.error("User has no practice ID configured.")
                 return JsonResponse({'error': 'User has no practice ID configured.'}, status=400)
             practice_id = user_practice.athena_practice_id
 
             data = json.loads(request.body)
+            logging.info(f"Received data for referral order creation: {data}")
+
             token = get_token()
-
-            # Prepare data for Athena API PUT request
-            athena_payload = {
-                'patientid': data['patient_id'],
-                'departmentid': data['department_id'],
-                'reasonid': data['reason_id'],
-                'urgentyn': 'true' if data.get('is_urgent') else 'false',
-            }
-
-            # Add insuranceinfo as a JSON string, URL-encoded
-            if 'insurance_info' in data:
-                athena_payload['insuranceinfo'] = json.dumps(data['insurance_info'])
-
-            appointment_id = data['appointment_id']
-            local_referral_id = data['local_referral_id'] # New: Get local referral ID
-            logging.info(f"Booking payload for Athena API - Appointment ID: {appointment_id}, Payload: {athena_payload}")
-
-            url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/appointments/{appointment_id}"
-            headers = {
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/x-www-form-urlencoded",
-            }
-            response = requests.put(url, headers=headers, data=athena_payload)
-
-            if not response.ok:
-                # Forward the status code and error message from Athena
-                return JsonResponse(
-                    {'error': f'Athena API Error: {response.text}'},
-                    status=response.status_code
-                )
-
-            athena_response = response.json()
-
-            # Athena API returns a list, extract the first item
-            if athena_response and isinstance(athena_response, list) and athena_response[0].get('appointmentid'):
-                booked_athena_id = athena_response[0]['appointmentid']
-                
-                # Update local database after successful booking
-                try:
-                    referral = Referral.objects.get(id=local_referral_id) # Find by local ID
-                    referral.athena_appointment_id = booked_athena_id
-                    referral.status = Referral.Status.SCHEDULED # Or COMPLETED, depending on desired state
-                    referral.scheduled_at = timezone.now()
-                    referral.save()
-                    ReferralHistory.objects.create(referral=referral, status=referral.status)
-                    logging.info(f"Local Referral {referral.id} updated for booking Athena ID {booked_athena_id}.")
-                except Referral.DoesNotExist:
-                    logging.warning(f"Local Referral {local_referral_id} not found for booking Athena ID {booked_athena_id}.")
-                except Exception as db_error:
-                    logging.error(f"Error updating local referral DB for booking of {booked_athena_id}: {db_error}")
-
-                return JsonResponse({'appointmentid': booked_athena_id}, safe=False)
-            else:
-                return JsonResponse({'error': 'Unexpected Athena API response format'}, status=500)
-
-        except Exception as e:
-            logging.error(f"Error booking appointment: {e}")
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
-
-@login_required
-def cancel_appointment_ajax(request):
-    if request.method == 'POST':
-        try:
-            user_practice = request.user.userprofile.practice
-            if not user_practice or not user_practice.athena_practice_id:
-                return JsonResponse({'error': 'User has no practice ID configured.'}, status=400)
-            practice_id = user_practice.athena_practice_id
-
-            data = json.loads(request.body)
-            token = get_token()
-
-            appointment_id = data['appointment_id']
             patient_id = data['patient_id']
+            department_id = data['department_id']
+            reason_id = data['reason_id']
 
-            logging.info(f"Cancellation payload for Athena API - Appointment ID: {appointment_id}, Patient ID: {patient_id}")
+            # Step 1.1: Get reason name from reason_id
+            # This requires a provider_id and department_id.
+            # We need to fetch the reason name to use as searchvalue for ordertypeid.
+            # Let's reuse the logic from get_appointment_reasons_ajax to get the reason name.
+            provider = Provider.objects.filter(practice=user_practice).first() # Assuming any provider will do to fetch reasons
+            if not provider:
+                logging.error("No providers found for this practice to fetch reason name.")
+                return JsonResponse({'error': 'No providers found for this practice to fetch reason name.'}, status=400)
 
-            url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/appointments/{appointment_id}/cancel"
-            headers = {
+            reason_name = None
+            reasons_data = get("patientappointmentreasons", practice_id, token, params={'providerid': provider.providerid, 'departmentid': department_id})
+            if reasons_data and 'patientappointmentreasons' in reasons_data:
+                for reason in reasons_data['patientappointmentreasons']:
+                    if str(reason.get('reasonid')) == str(reason_id):
+                        reason_name = reason.get('reason')
+                        break
+            
+            if not reason_name:
+                logging.error(f"Reason name not found for reason_id: {reason_id}")
+                return JsonResponse({'error': f'Reason name not found for reason_id: {reason_id}'}, status=400)
+            logging.info(f"Found reason name: {reason_name} for reason_id: {reason_id}")
+
+            # Step 1.2: Get ordertypeid using the reason name
+            headers = {"Authorization": f"Bearer {token}"}
+            params = {'searchvalue': reason_name}
+            url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/reference/order/referral"
+            logging.info(f"Getting ordertypeid from URL: {url} with params: {params}")
+            logging.info(f"Headers for ordertypeid request: {headers}")
+            response = requests.get(url, headers=headers, params=params)
+            logging.info(f"Response from ordertypeid request: {response.status_code} {response.text}")
+            response.raise_for_status()
+            referral_order_types = response.json()
+
+            if not referral_order_types or not referral_order_types[0]:
+                logging.error("Could not find referral order types.")
+                return JsonResponse({'error': 'Could not find referral order types.'}, status=400)
+            order_type_id = referral_order_types[0]['ordertypeid']
+            logging.info(f"Found ordertypeid: {order_type_id}")
+
+            # Step 2: Create an "Orders Only" encounter
+            order_group_payload = {
+                'patientid': patient_id,
+                'departmentid': department_id,
+            }
+            encounter_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/{patient_id}/ordergroups"
+            logging.info(f"Creating encounter with URL: {encounter_url}")
+            logging.info(f"Payload for encounter creation: {order_group_payload}")
+            order_group_response = requests.post(encounter_url, headers=headers, data=order_group_payload)
+            logging.info(f"Response from encounter creation: {order_group_response.status_code} {order_group_response.text}")
+            order_group_response.raise_for_status()
+            encounter_id = order_group_response.json().get('encounterid')
+
+            if not encounter_id:
+                logging.error("Could not create an encounter.")
+                return JsonResponse({'error': 'Could not create an encounter.'}, status=400)
+            logging.info(f"Created encounter with ID: {encounter_id}")
+
+            # Step 3: Create the referral order
+            referral_order_payload = {
+                'diagnosissnomedcode': '3457005', # Patient referral (procedure)
+                'ordertypeid': order_type_id,
+                'futuresubmitdate': datetime.now().strftime('%m/%d/%Y'),
+            }
+            
+            referral_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/encounter/{encounter_id}/orders/referral"
+            referral_headers = {
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/x-www-form-urlencoded",
             }
-            payload = f"patientid={patient_id}"
-
-            response = requests.put(url, headers=headers, data=payload)
+            logging.info(f"Creating referral order with URL: {referral_url}")
+            logging.info(f"Payload for referral order creation: {referral_order_payload}")
+            logging.info(f"Headers for referral order creation: {referral_headers}")
+            response = requests.post(referral_url, headers=referral_headers, data=referral_order_payload)
+            logging.info(f"Response from referral order creation: {response.status_code} {response.text}")
             response.raise_for_status()
-
-            # Update local database after successful cancellation
-            try:
-                referral = Referral.objects.get(athena_appointment_id=appointment_id) # Find referral by athena_appointment_id
-                referral.status = Referral.Status.CANCELLED
-                referral.cancelled_at = timezone.now()
-                referral.save()
-                ReferralHistory.objects.create(referral=referral, status=Referral.Status.CANCELLED)
-                logging.info(f"Local Referral {referral.id} updated for cancellation of Athena ID {appointment_id}.")
-            except Referral.DoesNotExist:
-                logging.warning(f"Referral for Athena appointment ID {appointment_id} not found in local DB.")
-            except Exception as db_error:
-                logging.error(f"Error updating local referral DB for cancellation of {appointment_id}: {db_error}")
-
-            return JsonResponse(response.json(), safe=False)
-
-        except Exception as e:
-            logging.error(f"Error cancelling appointment: {e}")
-            return JsonResponse({'error': str(e)}, status=500)
-
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
-
-def create_local_referral_ajax(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-
-            # Load ACO rules to determine in-network status
-            aco_rules = {}
-            aco_file_path = os.path.join(settings.BASE_DIR.parent, 'ACO.txt')
-            try:
-                with open(aco_file_path, 'r') as f:
-                    aco_rules = json.load(f)
-            except (FileNotFoundError, json.JSONDecodeError):
-                pass # If file is missing or invalid, treat all as out-of-network
-
-            in_network_providers_npi = set(str(n) for n in aco_rules.get('in-network_providers', []))
-
-            provider = Provider.objects.get(npi=data['provider_id'])
-            is_in_network = str(provider.npi) in in_network_providers_npi
-
-            patient, _ = Patient.objects.get_or_create(original_id=data['patient_id'])
-            payer, _ = Payer.objects.get_or_create(code=data['payer_code'], defaults={'name': data['payer_code']})
             
-            # Create the local Referral object
+            athena_referral_id = response.json().get('documentid')
+            logging.info(f"Created referral order with Athena ID: {athena_referral_id}")
+
+            # Create local referral
+            provider_npi = data['provider_id']
+            provider = Provider.objects.get(npi=provider_npi)
+            patient, _ = Patient.objects.get_or_create(original_id=patient_id)
+            payer_code = data.get('payer_code')
+            payer = None
+            if payer_code:
+                payer, _ = Payer.objects.get_or_create(code=payer_code, defaults={'name': payer_code})
+
             referral = Referral.objects.create(
                 patient=patient,
                 provider=provider,
                 payer=payer,
                 specialty=data.get('specialty') or provider.specialty or '',
-                in_network=is_in_network,
+                in_network=provider.is_in_network,
                 is_urgent=data.get('is_urgent', False),
-                status=Referral.Status.PENDING, # Initial status
-                referral_date=datetime.strptime(data['appointment_date'], "%m/%d/%Y").date(),
-                suggested_provider_ids="" # No suggestions yet
+                status=Referral.Status.SENT,
+                referral_date=datetime.now().date(),
+                athena_appointment_id=athena_referral_id, # Using this field to store the referral ID
+                suggested_provider_ids="" 
             )
             ReferralHistory.objects.create(referral=referral, status=referral.status)
             logging.info(f"Local Referral {referral.id} created for patient {patient.original_id} and provider {provider.npi}.")
 
-            return JsonResponse({'local_referral_id': referral.id}, safe=False)
+            return JsonResponse({'local_referral_id': referral.id, 'athena_referral_id': athena_referral_id}, safe=False)
 
-        except Provider.DoesNotExist:
-            return JsonResponse({'error': 'Provider not found'}, status=404)
-        except Patient.DoesNotExist:
-            return JsonResponse({'error': 'Patient not found'}, status=404)
         except Exception as e:
-            logging.error(f"Error creating local referral: {e}")
+            logging.error(f"Error creating referral order: {e}", exc_info=True)
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Invalid request method'}, status=405)
@@ -1002,7 +1011,6 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.models import User
 from django.contrib import messages
 from decimal import Decimal
-from datetime import datetime
 
 from . import athena_client
 

@@ -7,12 +7,17 @@
   <table>
     {% for field in form %}
       <tr>
-        <th>{{ field.label_tag }}</th>
+        <th>
+          {{ field.label_tag }}
+          {% if field.name == 'reasonid' %}
+            <span id="reason-loading-indicator" style="display: none; margin-left: 5px;" class="animated-dots"><span>.</span><span>.</span><span>.</span></span>
+          {% endif %}
+        </th>
         <td>
           {% if field.name == 'patient_id' %}
-            <input type="text" id="patient-search-input" placeholder="Search patient by name or ID" style="width: 40%; padding: 0.5rem;" />
-            <input type="hidden" name="patient_id" id="id_patient_id" />
-            <div id="patient-search-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto; display: none;"></div>
+              <input type="text" id="patient-search-input" placeholder="Search patient by name or ID" style="width: 40%; padding: 0.5rem;" />
+              <input type="hidden" name="patient_id" id="id_patient_id" />
+              <div id="patient-search-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto; display: none; position: absolute; background-color: white; width: 40%; z-index: 100;"></div>
           {% elif field.name == 'specialty' %}
             {{ field }}
           {% elif field.name == 'provider' %}
@@ -24,9 +29,9 @@
                 <option value="">--- select department ---</option>
             </select>
           {% elif field.name == 'reasonid' %}
-            <select name="reasonid" id="id_reasonid" style="width: 100%; padding: 0.5rem;">
-                <option value="">--- select reason ---</option>
-            </select>
+              <input type="text" id="reason-search-input" placeholder="Search appointment reason" style="width: 100%; padding: 0.5rem;" />
+              <input type="hidden" name="reasonid" id="id_reasonid" />
+              <div id="reason-search-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto; display: none; position: absolute; background-color: white; width: 100%; z-index: 100;"></div>
           {% else %}
             {{ field }}
           {% endif %}
@@ -123,25 +128,10 @@
 </style>
 
 <script>
-    const form = document.getElementById('new-referral-form');
-    const providerSelect = form.querySelector('[name="provider"]');
-    const departmentSelect = form.querySelector('[name="department"]');
-    const reasonIdSelect = form.querySelector('[name="reasonid"]');
-    const searchDateInput = document.getElementById('search-date');
-    const patientIdInput = form.querySelector('[name="patient_id"]');
-    const patientSearchInput = document.getElementById('patient-search-input');
-    const patientSearchResults = document.getElementById('patient-search-results');
-    console.log('patientSearchInput element:', patientSearchInput); // Debugging
-    const specialtyInput = form.querySelector('[name="specialty"]');
-    const searchButton = document.getElementById('search-slots-btn');
-    const table = document.getElementById('slots-table');
-    const tableBody = table.querySelector('tbody');
-    const loadingIndicator = document.getElementById('loading-indicator');
-    const noResultsMessage = document.getElementById('no-results-message');
-
     let allReasons = [];
     let allDepartments = [];
     let searchTimeout; // Declare searchTimeout here
+    let reasonSearchTimeout; // New timeout for reason search
 
     // --- Persistence Logic ---
     const STORAGE_KEYS = {
@@ -152,8 +142,28 @@
         PATIENT_ID: 'newReferralPatientId',
         PAYER_CODE: 'newReferralPayerCode',
         IS_URGENT: 'newReferralIsUrgent',
-        PATIENT_NAME: 'newReferralPatientName', // New storage key for search input
+        PATIENT_NAME: 'newReferralPatientName',
+        REASON_NAME: 'newReferralReasonName', // New storage key for reason search input
     };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('new-referral-form');
+        const providerSelect = form.querySelector('[name="provider"]');
+        const departmentSelect = form.querySelector('[name="department"]');
+        const reasonIdSelect = form.querySelector('[name="reasonid"]'); // This is now the hidden input
+        const reasonSearchInput = document.getElementById('reason-search-input');
+        const reasonSearchResults = document.getElementById('reason-search-results');
+        const searchDateInput = document.getElementById('search-date');
+        const patientIdInput = form.querySelector('[name="patient_id"]');
+        const patientSearchInput = document.getElementById('patient-search-input');
+        const patientSearchResults = document.getElementById('patient-search-results');
+        console.log('patientSearchInput element:', patientSearchInput); // Debugging
+        const specialtyInput = form.querySelector('[name="specialty"]');
+        const searchButton = document.getElementById('search-slots-btn');
+        const table = document.getElementById('slots-table');
+        const tableBody = table.querySelector('tbody');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const noResultsMessage = document.getElementById('no-results-message');
 
     function saveFormState() {
         sessionStorage.setItem(STORAGE_KEYS.PROVIDER, providerSelect.value);
@@ -163,7 +173,8 @@
         sessionStorage.setItem(STORAGE_KEYS.PATIENT_ID, patientIdInput.value);
         sessionStorage.setItem(STORAGE_KEYS.PAYER_CODE, form.querySelector('[name="payer_code"]').value);
         sessionStorage.setItem(STORAGE_KEYS.IS_URGENT, form.querySelector('[name="is_urgent"]').checked);
-        sessionStorage.setItem(STORAGE_KEYS.PATIENT_NAME, patientSearchInput.value); // Save patient search input
+        sessionStorage.setItem(STORAGE_KEYS.PATIENT_NAME, patientSearchInput.value);
+        sessionStorage.setItem(STORAGE_KEYS.REASON_NAME, reasonSearchInput.value); // Save reason search input
     }
 
     function loadFormState() {
@@ -174,7 +185,8 @@
         const storedPatientId = sessionStorage.getItem(STORAGE_KEYS.PATIENT_ID);
         const storedPayerCode = sessionStorage.getItem(STORAGE_KEYS.PAYER_CODE);
         const storedIsUrgent = sessionStorage.getItem(STORAGE_KEYS.IS_URGENT);
-        const storedPatientName = sessionStorage.getItem(STORAGE_KEYS.PATIENT_NAME); // Load patient search input
+        const storedPatientName = sessionStorage.getItem(STORAGE_KEYS.PATIENT_NAME);
+        const storedReasonName = sessionStorage.getItem(STORAGE_KEYS.REASON_NAME); // Load reason search input
 
         if (storedProvider) {
             providerSelect.value = storedProvider;
@@ -200,9 +212,12 @@
         if (storedPatientName) {
             patientSearchInput.value = storedPatientName;
         }
+        if (storedReasonName) {
+            reasonSearchInput.value = storedReasonName;
+        }
     }
 
-    // --- Department Dropdown Logic ---
+    // --- Department Dropdown Logic (unchanged) ---
     async function fetchAndPopulateDepartments(providerId) {
         departmentSelect.innerHTML = '<option value="">--- loading departments ---</option>';
         departmentSelect.disabled = true;
@@ -219,7 +234,7 @@
             if (storedDepartment) {
                 departmentSelect.value = storedDepartment;
             }
-            fetchAndPopulateReasons();
+            // No longer calling fetchAndPopulateReasons here, as it's now a search input
         } catch (error) {
             console.error('Error fetching departments:', error);
             departmentSelect.innerHTML = '<option value="">--- error loading departments ---</option>';
@@ -240,63 +255,14 @@
         });
     }
 
-    // --- Reason Dropdown Logic ---
-    async function fetchAndPopulateReasons() {
-        const selectedProviderId = providerSelect.value;
-        const selectedDepartmentId = departmentSelect.value;
-
-        if (!selectedProviderId || !selectedDepartmentId) {
-            reasonIdSelect.innerHTML = '<option value="">--- select provider and department ---</option>';
-            reasonIdSelect.disabled = true;
-            return;
-        }
-
-        reasonIdSelect.innerHTML = '<option value="">--- loading reasons ---</option>';
-        reasonIdSelect.disabled = true;
-
-        try {
-            const params = new URLSearchParams();
-            params.append('provider_id', selectedProviderId);
-            params.append('department_id', selectedDepartmentId);
-            const response = await fetch(`/appointment-reasons/?${params.toString()}`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            allReasons = await response.json();
-            populateReasonDropdown(allReasons);
-            reasonIdSelect.disabled = false;
-            const storedReasonId = sessionStorage.getItem(STORAGE_KEYS.REASON_ID);
-            if (storedReasonId) {
-                reasonIdSelect.value = storedReasonId;
-            }
-        } catch (error) {
-            console.error('Error fetching appointment reasons:', error);
-            reasonIdSelect.innerHTML = '<option value="">--- error loading reasons ---</option>';
-            reasonIdSelect.disabled = true;
-        }
-    }
-
-    function populateReasonDropdown(reasonsToDisplay) {
-        reasonIdSelect.innerHTML = '<option value="">--- select reason ---</option>';
-        reasonsToDisplay.forEach(reason => {
-            const option = document.createElement('option');
-            option.value = reason.id;
-            option.textContent = reason.name;
-            reasonIdSelect.appendChild(option);
-        });
-    }
-
     // --- Event Listeners and Initial Load ---
     providerSelect.addEventListener('change', () => {
         saveFormState();
         autoPopulateSpecialty();
         fetchAndPopulateDepartments(providerSelect.value);
     });
-    departmentSelect.addEventListener('change', () => {
-        saveFormState();
-        fetchAndPopulateReasons();
-    });
-    reasonIdSelect.addEventListener('change', saveFormState);
+    departmentSelect.addEventListener('change', saveFormState); // Only save state, no reason fetching here
+    reasonIdSelect.addEventListener('change', saveFormState); // For the hidden input
     searchDateInput.addEventListener('change', saveFormState);
     patientIdInput.addEventListener('input', saveFormState);
     patientSearchInput.addEventListener('keyup', () => {
@@ -358,10 +324,77 @@
         }
     }
 
+    // New Reason Search Logic
+    reasonSearchInput.addEventListener('keyup', () => {
+        console.log('Reason search input event fired.');
+        clearTimeout(reasonSearchTimeout);
+        reasonSearchResults.style.display = 'none';
+        reasonSearchResults.innerHTML = '';
+        reasonIdSelect.value = ''; // Clear hidden ID on new search
+        saveFormState();
+
+        const query = reasonSearchInput.value.trim();
+        console.log('Reason search query:', query);
+        if (query.length < 2) { // Only search with 2 or more characters
+            return;
+        }
+
+        reasonSearchTimeout = setTimeout(async () => {
+            console.log('Making reason search AJAX call for query:', query);
+            const reasonLoadingIndicator = document.getElementById('reason-loading-indicator');
+            reasonLoadingIndicator.style.display = 'inline'; // Show loading
+            try {
+                const response = await fetch(`/search-appointment-reasons/?query=${encodeURIComponent(query)}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const reasons = await response.json();
+                console.log('Reasons received from AJAX:', reasons);
+                displayReasonSearchResults(reasons);
+            } catch (error) {
+                console.error('Error searching reasons:', error);
+                reasonSearchResults.innerHTML = '<div style="padding: 8px; color: red;">Error searching reasons.</div>';
+                reasonSearchResults.style.display = 'block';
+            } finally {
+                reasonLoadingIndicator.style.display = 'none'; // Hide loading
+            }
+        }, 300); // Debounce for 300ms
+    });
+
+    function displayReasonSearchResults(reasons) {
+        console.log('Inside displayReasonSearchResults, reasons:', reasons);
+        reasonSearchResults.innerHTML = '';
+        if (reasons.length > 0) {
+            reasons.forEach(reason => {
+                const resultItem = document.createElement('div');
+                resultItem.style.padding = '8px';
+                resultItem.style.borderBottom = '1px solid #eee';
+                resultItem.style.cursor = 'pointer';
+                resultItem.textContent = `${reason.name} (ID: ${reason.id})`;
+                resultItem.dataset.reasonId = reason.id;
+                resultItem.dataset.reasonName = reason.name;
+                resultItem.addEventListener('click', (event) => {
+                    reasonSearchInput.value = event.target.dataset.reasonName;
+                    reasonIdSelect.value = event.target.dataset.reasonId;
+                    reasonSearchResults.style.display = 'none';
+                    saveFormState();
+                });
+                reasonSearchResults.appendChild(resultItem);
+            });
+            reasonSearchResults.style.display = 'block';
+        } else {
+            reasonSearchResults.innerHTML = '<div style="padding: 8px;">No reasons found.</div>';
+            reasonSearchResults.style.display = 'block';
+        }
+    }
+
     // Hide results when clicking outside
     document.addEventListener('click', (event) => {
         if (!patientSearchInput.contains(event.target) && !patientSearchResults.contains(event.target)) {
             patientSearchResults.style.display = 'none';
+        }
+        if (!reasonSearchInput.contains(event.target) && !reasonSearchResults.contains(event.target)) {
+            reasonSearchResults.style.display = 'none';
         }
     });
     form.querySelector('[name="payer_code"]').addEventListener('input', saveFormState);
@@ -489,12 +522,85 @@
                 slots.forEach(slot => {
                     const formattedTime = new Date(`2000/01/01 ${slot.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
                     const row = tableBody.insertRow();
+                    const createReferralButton = document.createElement('button');
+                    createReferralButton.className = 'action-btn create-referral-btn book-btn';
+                    createReferralButton.textContent = 'Create Referral';
+                    // No longer need appointment-specific data on the button for referral creation
+                    // createReferralButton.dataset.appointmentId = slot.appointmentid;
+                    // createReferralButton.dataset.appointmentDate = slot.date;
+                    // createReferralButton.dataset.appointmentTime = slot.time;
+
+                    createReferralButton.addEventListener('click', async (event) => {
+                        const btn = event.target;
+                        btn.disabled = true;
+                        btn.textContent = 'Processing...';
+
+                        const selectedProviderOption = providerSelect.options[providerSelect.selectedIndex];
+                        const providerNpi = selectedProviderOption ? selectedProviderOption.dataset.npi : '';
+                        const patientId = patientIdInput.value;
+                        const payerCode = form.querySelector('[name="payer_code"]').value;
+                        const isUrgent = form.querySelector('[name="is_urgent"]').checked;
+                        const specialty = specialtyInput.value;
+
+                        if (!patientId) {
+                            alert('Please select a patient.');
+                            btn.disabled = false;
+                            btn.textContent = 'Create Referral';
+                            return;
+                        }
+                        if (!providerNpi) {
+                            alert('Please select a provider.');
+                            btn.disabled = false;
+                            btn.textContent = 'Create Referral';
+                            return;
+                        }
+
+                        try {
+                            // Step 1: Create referral order
+                            const referralOrderPayload = {
+                                patient_id: patientId,
+                                provider_id: providerNpi, // Use NPI for local referral creation
+                                payer_code: payerCode,
+                                specialty: specialty,
+                                is_urgent: isUrgent,
+                                department_id: departmentSelect.value,
+                            };
+                            console.log('Creating referral order with payload:', referralOrderPayload);
+                            const referralOrderResponse = await fetch('/create-referral-order/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': '{{ csrf_token }}',
+                                },
+                                body: JSON.stringify(referralOrderPayload),
+                            });
+
+                            if (!referralOrderResponse.ok) {
+                                const errorData = await referralOrderResponse.json();
+                                throw new Error(errorData.error || `Failed to create referral order: ${referralOrderResponse.status}`);
+                            }
+                            const referralOrderData = await referralOrderResponse.json();
+                            const localReferralId = referralOrderData.local_referral_id;
+                            console.log('Referral order created with local ID:', localReferralId);
+
+                            alert('Referral created successfully!');
+                            window.location.href = `/referrals/${localReferralId}/`; // Redirect to referral detail page
+
+                        } catch (error) {
+                            alert(`Error: ${error.message}`);
+                            console.error('Referral creation error:', error);
+                            btn.disabled = false;
+                            btn.textContent = 'Create Referral';
+                        }
+                    });
+
                     row.innerHTML = `
                         <td>${slot.date}</td>
                         <td>${formattedTime}</td>
                         <td>${slot.department}</td>
-                        <td><button class="action-btn book-btn" data-appointment-id="${slot.appointmentid}" data-appointment-date="${slot.date}" data-appointment-time="${slot.time}">Book</button></td>
+                        <td></td>
                     `;
+                    row.querySelector('td:last-child').appendChild(createReferralButton);
                 });
                 table.style.display = 'table';
             } else {
@@ -507,155 +613,8 @@
             console.error('Error fetching slots:', error);
         }
     });
+    })
 
-    // --- Booking Logic ---
-    tableBody.addEventListener('click', async (event) => {
-        if (event.target.classList.contains('book-btn')) {
-            const button = event.target;
-            const appointmentId = button.dataset.appointmentId;
-            const appointmentDate = button.dataset.appointmentDate;
-            const appointmentTime = button.dataset.appointmentTime;
-
-            // Gather form data
-            const patientId = patientIdInput.value;
-
-            const providerId = providerSelect.value;
-            const departmentId = departmentSelect.value;
-            const reasonId = reasonIdSelect.value;
-            const isUrgent = form.querySelector('[name="is_urgent"]').checked;
-            const payerCode = form.querySelector('[name="payer_code"]').value;
-            const specialty = specialtyInput.value; // Get specialty from the form
-
-            // Disable button to prevent multiple clicks
-            button.disabled = true;
-            button.textContent = 'Booking...';
-
-            try {
-                // Step 1: Create local Referral object
-                console.log("Before /create-local-referral/ fetch, patientId is:", patientId);
-                const localReferralResponse = await fetch('/create-local-referral/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value,
-                    },
-                    body: JSON.stringify({
-                        patient_id: patientId,
-                        provider_id: providerId,
-                        department_id: departmentId,
-                        reason_id: reasonId,
-                        is_urgent: isUrgent,
-                        payer_code: payerCode,
-                        specialty: specialty,
-                        appointment_date: appointmentDate, // Pass appointment date for local referral creation
-                    }),
-                });
-
-                const localReferralResult = await localReferralResponse.json();
-
-                if (!localReferralResponse.ok) {
-                    throw new Error(localReferralResult.error || 'Failed to create local referral');
-                }
-                const localReferralId = localReferralResult.local_referral_id;
-
-                // Step 2: Book appointment with Athena API
-                console.log("Before /book-appointment/ fetch, patientId is:", patientId);
-                const response = await fetch('/book-appointment/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value,
-                    },
-                    body: JSON.stringify({
-                        appointment_id: appointmentId,
-                        appointment_date: appointmentDate,
-                        appointment_time: appointmentTime,
-                        patient_id: patientId,
-                        department_id: departmentId,
-                        reason_id: reasonId,
-                        is_urgent: isUrgent,
-                        local_referral_id: localReferralId, // Pass local referral ID
-                        insurance_info: {
-                            insurancecompany: payerCode,
-                            insuranceplanname: payerCode,
-                        },
-                    }),
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    console.log('Booked Appointment ID:', result.appointmentid);
-                    button.textContent = 'Booked';
-                    button.disabled = true; // Apply disabled style
-                    button.dataset.bookedId = result.appointmentid; // Store booked ID
-
-                    setTimeout(() => {
-                        button.textContent = 'Cancel';
-                        button.disabled = false; // Enable for cancellation
-                        button.classList.remove('book-btn');
-                        button.classList.add('cancel-action-btn');
-                        console.log('Button after 3s (Cancel state):', button.textContent, button.classList);
-                    }, 3000); // 3-second delay
-
-                } else {
-                    if (response.status === 409) {
-                        alert('This appointment slot is not available. It might have been booked by someone else or is still being processed. Please try another slot or search again in a few moments.');
-                        button.disabled = false;
-                        button.textContent = 'Book';
-                    } else {
-                        throw new Error(result.error || 'Booking failed');
-                    }
-                }
-
-            } catch (error) {
-                console.error('Error booking appointment:', error);
-                alert(`Booking failed: ${error.message}`);
-                button.disabled = false;
-                button.textContent = 'Book';
-            }
-        } else if (event.target.classList.contains('cancel-action-btn')) {
-            console.log('Cancel button clicked!', event.target.textContent, event.target.classList);
-            const button = event.target;
-            const appointmentId = button.dataset.bookedId; // Retrieve booked ID
-            const patientId = patientIdInput.value; // Patient ID from form
-
-            button.disabled = true;
-            button.textContent = 'Cancelling...';
-
-            try {
-                const response = await fetch('/cancel-appointment/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': form.querySelector('[name="csrfmiddlewaretoken"]').value,
-                    },
-                    body: JSON.stringify({
-                        appointment_id: appointmentId,
-                        patient_id: patientId,
-                    }),
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    console.log('Cancelled Appointment ID:', appointmentId);
-                    button.textContent = 'Cancelled';
-                    button.disabled = true; // Keep disabled after cancellation
-                    button.classList.remove('cancel-action-btn');
-                    button.classList.add('cancelled-btn'); // Add a class for final cancelled state
-
-                } else {
-                    throw new Error(result.error || 'Cancellation failed');
-                }
-            }catch (error) {
-                    console.error('Error cancelling appointment:', error);
-                    alert(`Cancellation failed: ${error.message}`);
-                    button.disabled = false;
-                    button.textContent = 'Cancel';
-                }
-            }
-        });
 </script>
 
 {% endblock %}

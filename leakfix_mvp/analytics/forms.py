@@ -22,7 +22,7 @@ class ReferralForm(forms.Form):
         help_text="Select a department for the chosen provider."
     )
     payer_code = forms.CharField(label='Payer Code', max_length=64, required=False)
-    reasonid = forms.IntegerField(label='Reason', required=True)
+    reasonid = forms.IntegerField(label='Referral Reason', required=True)
     is_urgent = forms.BooleanField(label='Is Urgent?', required=False) # Checkboxes don't need required=True
 
     def __init__(self, *args, **kwargs):
