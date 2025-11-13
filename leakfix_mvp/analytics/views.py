@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+import time
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum, Q, Avg
@@ -538,11 +540,12 @@ from django.core.cache import cache
 @login_required
 def find_provider_slots(request):
     provider_id_str = request.GET.get('provider_id')
-    reason_id_str = request.GET.get('reasonid')
-    search_date_str = request.GET.get('search_date') # New parameter
+    department_id_str = request.GET.get('department_id')
+    start_date_str = request.GET.get('startdate')
+    end_date_str = request.GET.get('enddate')
 
-    if not provider_id_str:
-        return JsonResponse({'error': 'provider_id is required'}, status=400)
+    if not provider_id_str or not department_id_str:
+        return JsonResponse({'error': 'provider_id and department_id are required'}, status=400)
 
     try:
         user_practice = request.user.userprofile.practice
@@ -551,48 +554,68 @@ def find_provider_slots(request):
         practice_id = user_practice.athena_practice_id
 
         provider_id = int(provider_id_str)
-        reason_id = int(reason_id_str) if reason_id_str else None
+        department_id = int(department_id_str)
 
-        token = get_token() 
+        token = get_token()
         
-        departments_data = get("departments", practice_id, token, params={"limit": 200})
-        departments = departments_data.get('departments', [])
+        # Step 1: Get all appointment reasons for the provider and department
+        reason_params = {'providerid': provider_id, 'departmentid': department_id}
+        reasons_data = get("patientappointmentreasons", practice_id, token, params=reason_params)
         
+        all_reason_ids = []
+        if reasons_data and 'patientappointmentreasons' in reasons_data:
+            all_reason_ids = [str(r['reasonid']) for r in reasons_data['patientappointmentreasons']]
+
+        if not all_reason_ids:
+            logging.warning(f"No appointment reasons found for provider {provider_id} and department {department_id}. Cannot search for slots.")
+            return JsonResponse([], safe=False) # Return empty list if no reasons found
+
+        # Step 2: Find open slots by looping through each reason ID
         all_open_slots = []
-
-        if search_date_str:
-            start_date = search_date_str
-            end_date = search_date_str
+        seen_appointment_ids = set()
+        
+        if start_date_str and end_date_str:
+            start_date = start_date_str
+            end_date = end_date_str
         else:
             start_date = datetime.now().strftime("%m/%d/%Y")
             end_date = (datetime.now() + timedelta(days=90)).strftime("%m/%d/%Y")
 
-        for dept in departments:
-            dept_id = int(dept['departmentid'])
-            params = {
-                    "departmentid": dept_id,
-                    "providerid": provider_id,
-                    "startdate": start_date,
-                    "enddate": end_date,
-                }
-            if reason_id:
-                params['reasonid'] = reason_id
+        # Get department name for the response
+        department_details = get(f"departments/{department_id}", practice_id, token)
+        department_name = department_details[0].get('name') if department_details else f"Department {department_id}"
 
-            slots_data = get("appointments/open", practice_id, token, params=params)
+        for reason_id in all_reason_ids:
+            slot_params = {
+                "departmentid": department_id,
+                "providerid": provider_id,
+                "startdate": start_date,
+                "enddate": end_date,
+                "reasonid": reason_id
+            }
 
-            if slots_data and slots_data.get('appointments'):
-                for slot in slots_data['appointments']:
-                    all_open_slots.append({
-                        'appointmentid': slot.get('appointmentid'),
-                        'date': slot.get('date'),
-                        'time': slot.get('starttime'),
-                        'department': dept.get('name'),
-                    })
+            try:
+                slots_data = get("appointments/open", practice_id, token, params=slot_params)
+
+                if slots_data and slots_data.get('appointments'):
+                    for slot in slots_data['appointments']:
+                        appointment_id = slot.get('appointmentid')
+                        if appointment_id not in seen_appointment_ids:
+                            all_open_slots.append({
+                                'appointmentid': appointment_id,
+                                'date': slot.get('date'),
+                                'time': slot.get('starttime'),
+                                'department': department_name,
+                            })
+                            seen_appointment_ids.add(appointment_id)
+            except Exception as e:
+                logging.error(f"Could not fetch slots for reasonid {reason_id}: {e}")
+                # Continue to the next reason id even if one fails
+                continue
         
         return JsonResponse(all_open_slots, safe=False)
 
     except Exception as e:
-        # Log the full error for debugging
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
@@ -831,58 +854,33 @@ def create_referral_order_ajax(request):
             token = get_token()
             patient_id = data['patient_id']
             department_id = data['department_id']
-            reason_id = data['reason_id']
+            order_type_id = data['ordertypeid'] # Directly use ordertypeid from the form
 
-            # Step 1.1: Get reason name from reason_id
-            # This requires a provider_id and department_id.
-            # We need to fetch the reason name to use as searchvalue for ordertypeid.
-            # Let's reuse the logic from get_appointment_reasons_ajax to get the reason name.
-            provider = Provider.objects.filter(practice=user_practice).first() # Assuming any provider will do to fetch reasons
-            if not provider:
-                logging.error("No providers found for this practice to fetch reason name.")
-                return JsonResponse({'error': 'No providers found for this practice to fetch reason name.'}, status=400)
+            if not order_type_id:
+                logging.error("ordertypeid is missing from the request.")
+                return JsonResponse({'error': 'Referral Order Type is required.'}, status=400)
 
-            reason_name = None
-            reasons_data = get("patientappointmentreasons", practice_id, token, params={'providerid': provider.providerid, 'departmentid': department_id})
-            if reasons_data and 'patientappointmentreasons' in reasons_data:
-                for reason in reasons_data['patientappointmentreasons']:
-                    if str(reason.get('reasonid')) == str(reason_id):
-                        reason_name = reason.get('reason')
-                        break
-            
-            if not reason_name:
-                logging.error(f"Reason name not found for reason_id: {reason_id}")
-                return JsonResponse({'error': f'Reason name not found for reason_id: {reason_id}'}, status=400)
-            logging.info(f"Found reason name: {reason_name} for reason_id: {reason_id}")
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json",
+            }
 
-            # Step 1.2: Get ordertypeid using the reason name
-            headers = {"Authorization": f"Bearer {token}"}
-            params = {'searchvalue': reason_name}
-            url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/reference/order/referral"
-            logging.info(f"Getting ordertypeid from URL: {url} with params: {params}")
-            logging.info(f"Headers for ordertypeid request: {headers}")
-            response = requests.get(url, headers=headers, params=params)
-            logging.info(f"Response from ordertypeid request: {response.status_code} {response.text}")
-            response.raise_for_status()
-            referral_order_types = response.json()
-
-            if not referral_order_types or not referral_order_types[0]:
-                logging.error("Could not find referral order types.")
-                return JsonResponse({'error': 'Could not find referral order types.'}, status=400)
-            order_type_id = referral_order_types[0]['ordertypeid']
-            logging.info(f"Found ordertypeid: {order_type_id}")
-
-            # Step 2: Create an "Orders Only" encounter
+            # Step 1: Create an "Orders Only" encounter
             order_group_payload = {
                 'patientid': patient_id,
                 'departmentid': department_id,
             }
             encounter_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/{patient_id}/ordergroups"
-            logging.info(f"Creating encounter with URL: {encounter_url}")
-            logging.info(f"Payload for encounter creation: {order_group_payload}")
-            order_group_response = requests.post(encounter_url, headers=headers, data=order_group_payload)
-            logging.info(f"Response from encounter creation: {order_group_response.status_code} {order_group_response.text}")
-            order_group_response.raise_for_status()
+            logging.info(f"Creating encounter with URL: {encounter_url} and payload: {order_group_payload}")
+            order_group_response = requests.post(encounter_url, headers=headers, data=urlencode(order_group_payload))
+            
+            try:
+                order_group_response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                logging.error(f"Athena API Error (Encounter Creation): {order_group_response.text}")
+                raise e
+
             encounter_id = order_group_response.json().get('encounterid')
 
             if not encounter_id:
@@ -890,25 +888,61 @@ def create_referral_order_ajax(request):
                 return JsonResponse({'error': 'Could not create an encounter.'}, status=400)
             logging.info(f"Created encounter with ID: {encounter_id}")
 
-            # Step 3: Create the referral order
+            # Step 2: Add a diagnosis to the encounter
+            diagnosis_code = '3457005'
+            diagnosis_payload = {'snomedcode': diagnosis_code}
+            diagnosis_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/encounter/{encounter_id}/diagnoses"
+            diagnosis_headers = headers # Re-use the same headers
+            logging.info(f"Adding diagnosis to encounter with URL: {diagnosis_url} and payload: {diagnosis_payload}")
+            diagnosis_response = requests.post(diagnosis_url, headers=diagnosis_headers, data=urlencode(diagnosis_payload))
+            
+            try:
+                diagnosis_response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                logging.error(f"Athena API Error (Diagnosis Creation): {diagnosis_response.text}")
+                raise e
+            
+            logging.info(f"Successfully added diagnosis to encounter {encounter_id}.")
+
+            # Step 3: Verify the diagnosis was added
+            time.sleep(3) # Wait for Athena to process the diagnosis
+            verify_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/encounter/{encounter_id}/diagnoses"
+            logging.info(f"Verifying diagnosis with URL: {verify_url}")
+            verify_response = requests.get(verify_url, headers=headers)
+            verify_response.raise_for_status()
+            diagnoses_data = verify_response.json()
+            if isinstance(diagnoses_data, dict):
+                diagnoses = diagnoses_data.get('diagnoses', [])
+            else:
+                diagnoses = diagnoses_data # Assume it's a list
+            
+            if not any(str(d.get('snomedcode')) == diagnosis_code for d in diagnoses):
+                logging.error(f"Verification failed: Diagnosis {diagnosis_code} not found on encounter {encounter_id}. Found: {diagnoses}")
+                raise Exception("Diagnosis verification failed.")
+            
+            logging.info(f"Successfully verified diagnosis on encounter {encounter_id}.")
+
+            # Step 4: Create the referral order, explicitly linking the diagnosis
             referral_order_payload = {
-                'diagnosissnomedcode': '3457005', # Patient referral (procedure)
                 'ordertypeid': order_type_id,
-                'futuresubmitdate': datetime.now().strftime('%m/%d/%Y'),
+                'dateofservice': data.get('dateofservice', datetime.now().strftime('%m/%d/%Y')),
+                'diagnosissnomedcode': diagnosis_code,
+                'highpriority': data.get('is_urgent', False),
+                'providernote': data.get('providernote', ''),
+                'notetopatient': data.get('notetopatient', ''),
             }
             
             referral_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/encounter/{encounter_id}/orders/referral"
-            referral_headers = {
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/x-www-form-urlencoded",
-            }
-            logging.info(f"Creating referral order with URL: {referral_url}")
-            logging.info(f"Payload for referral order creation: {referral_order_payload}")
-            logging.info(f"Headers for referral order creation: {referral_headers}")
-            response = requests.post(referral_url, headers=referral_headers, data=referral_order_payload)
-            logging.info(f"Response from referral order creation: {response.status_code} {response.text}")
-            response.raise_for_status()
+            referral_headers = headers # Re-use the same headers
+            logging.info(f"Creating referral order with URL: {referral_url} and payload: {referral_order_payload}")
+            response = requests.post(referral_url, headers=referral_headers, data=urlencode(referral_order_payload))
             
+            try:
+                response.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                logging.error(f"Athena API Error Response: {response.text}")
+                raise e
+
             athena_referral_id = response.json().get('documentid')
             logging.info(f"Created referral order with Athena ID: {athena_referral_id}")
 
@@ -916,10 +950,17 @@ def create_referral_order_ajax(request):
             provider_npi = data['provider_id']
             provider = Provider.objects.get(npi=provider_npi)
             patient, _ = Patient.objects.get_or_create(original_id=patient_id)
-            payer_code = data.get('payer_code')
+            
             payer = None
-            if payer_code:
-                payer, _ = Payer.objects.get_or_create(code=payer_code, defaults={'name': payer_code})
+            patient_insurance_id = data.get('patientinsuranceid')
+            if patient_insurance_id:
+                # This is a simplification. In a real scenario, you might want to
+                # store more details about the insurance plan locally.
+                try:
+                    # We use the patient_insurance_id as the code for simplicity here.
+                    payer, _ = Payer.objects.get_or_create(code=patient_insurance_id, defaults={'name': f"Payer ID {patient_insurance_id}"})
+                except Exception as e:
+                    logging.error(f"Could not create or get Payer object for ID {patient_insurance_id}: {e}")
 
             referral = Referral.objects.create(
                 patient=patient,
@@ -931,7 +972,9 @@ def create_referral_order_ajax(request):
                 status=Referral.Status.SENT,
                 referral_date=datetime.now().date(),
                 athena_appointment_id=athena_referral_id, # Using this field to store the referral ID
-                suggested_provider_ids="" 
+                suggested_provider_ids="",
+                provider_note=data.get('providernote', ''),
+                note_to_patient=data.get('notetopatient', ''),
             )
             ReferralHistory.objects.create(referral=referral, status=referral.status)
             logging.info(f"Local Referral {referral.id} created for patient {patient.original_id} and provider {provider.npi}.")
@@ -1004,6 +1047,44 @@ def patient_search_ajax(request):
 
     except Exception as e:
         logging.error(f"Error searching patients: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def get_patient_insurances_ajax(request, patient_id):
+    logging.info(f"Fetching insurances for patient ID: {patient_id}")
+    try:
+        user_practice = request.user.userprofile.practice
+        if not user_practice or not user_practice.athena_practice_id:
+            return JsonResponse({'error': 'User has no practice ID configured.'}, status=400)
+        practice_id = user_practice.athena_practice_id
+    except (UserProfile.DoesNotExist, AttributeError):
+        return JsonResponse({'error': 'Could not determine user\'s practice.'}, status=400)
+
+    cache_key = f'athena_patient_insurances_{patient_id}'
+    cached_insurances = cache.get(cache_key)
+    if cached_insurances:
+        logging.info("Returning cached insurance data.")
+        return JsonResponse(cached_insurances, safe=False)
+
+    try:
+        token = get_token()
+        insurances_data = get(f"patients/{patient_id}/insurances", practice_id, token)
+        logging.info(f"Raw insurance data from Athena for patient {patient_id}: {insurances_data}")
+        
+        insurance_list = []
+        if insurances_data and 'insurances' in insurances_data:
+            for ins in insurances_data['insurances']:
+                insurance_list.append({
+                    'id': ins.get('insuranceid'),
+                    'name': ins.get('insuranceplanname'),
+                })
+        
+        logging.info(f"Processed insurance list for patient {patient_id}: {insurance_list}")
+        cache.set(cache_key, insurance_list, 3600) # Cache for 1 hour
+        return JsonResponse(insurance_list, safe=False)
+    except Exception as e:
+        logging.error(f"Error fetching patient insurances for patient {patient_id}: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
 

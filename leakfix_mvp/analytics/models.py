@@ -91,6 +91,7 @@ class Referral(models.Model):
     specialty = models.CharField(max_length=120, blank=True)  # NEW: record referral specialty
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     in_network = models.BooleanField(default=True)
+    is_urgent = models.BooleanField(default=False)
     cost_value = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     referral_date = models.DateField()
     suggested_provider_ids = models.CharField(max_length=200, blank=True)
@@ -99,8 +100,9 @@ class Referral(models.Model):
     scheduled_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
-    is_urgent = models.BooleanField(default=False)
     athena_appointment_id = models.CharField(max_length=50, blank=True, null=True)
+    provider_note = models.TextField(blank=True)
+    note_to_patient = models.TextField(blank=True)
 
     def __str__(self) -> str:
         return f"Referral ({self.patient}) → {self.provider}"

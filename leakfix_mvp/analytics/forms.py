@@ -21,8 +21,17 @@ class ReferralForm(forms.Form):
         choices=[], # Will be populated dynamically
         help_text="Select a department for the chosen provider."
     )
-    payer_code = forms.CharField(label='Payer Code', max_length=64, required=False)
-    reasonid = forms.IntegerField(label='Referral Reason', required=True)
+    patient_insurance_id = forms.CharField(label='Payer', max_length=64, required=False)
+    ordertypeid = forms.IntegerField(
+        label='Referral Order Type', 
+        required=True,
+        help_text="The specific clinical service being ordered. Used for billing and clinical documentation."
+    )
+    reasonid = forms.IntegerField(
+        label='Appointment Visit Reason',
+        required=True,
+        help_text="The reason for the visit, used to find appropriate appointment slots."
+    )
     is_urgent = forms.BooleanField(label='Is Urgent?', required=False) # Checkboxes don't need required=True
 
     def __init__(self, *args, **kwargs):

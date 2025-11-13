@@ -1,74 +1,138 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+    /* Existing styles... */
+    .help-icon {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background-color: #6c757d;
+        color: white;
+        text-align: center;
+        font-size: 12px;
+        line-height: 16px;
+        cursor: help;
+        position: relative;
+        margin-left: 5px;
+    }
+    .help-icon .tooltip-text {
+        visibility: hidden;
+        width: 220px;
+        background-color: #343a40;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 8px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -110px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        font-size: 12px;
+        font-weight: normal;
+    }
+    .help-icon:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+</style>
+
 <h2>Create Referral</h2>
 <form id="new-referral-form">
   {% csrf_token %}
   <table>
-    {% for field in form %}
-      <tr>
-        <th>
-          {{ field.label_tag }}
-          {% if field.name == 'reasonid' %}
-            <span id="reason-loading-indicator" style="display: none; margin-left: 5px;" class="animated-dots"><span>.</span><span>.</span><span>.</span></span>
-          {% endif %}
-        </th>
+    <!-- Manually rendering fields to add help icons and custom inputs -->
+    <tr>
+        <th><label for="patient-search-input">Patient</label></th>
         <td>
-          {% if field.name == 'patient_id' %}
-              <input type="text" id="patient-search-input" placeholder="Search patient by name or ID" style="width: 40%; padding: 0.5rem;" />
-              <input type="hidden" name="patient_id" id="id_patient_id" />
-              <div id="patient-search-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto; display: none; position: absolute; background-color: white; width: 40%; z-index: 100;"></div>
-          {% elif field.name == 'specialty' %}
-            {{ field }}
-          {% elif field.name == 'provider' %}
+            <input type="text" id="patient-search-input" placeholder="Search patient by name or ID" style="width: 40%; padding: 0.5rem;" />
+            <input type="hidden" name="patient_id" id="id_patient_id" />
+            <div id="patient-search-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto; display: none; position: absolute; background-color: white; width: 40%; z-index: 100;"></div>
+        </td>
+    </tr>
+    <tr>
+        <th><label for="id_specialty">Specialty</label></th>
+        <td>
+            {{ form.specialty }}
+            <small style="display: block; color: #666;">{{ form.specialty.help_text }}</small>
+        </td>
+    </tr>
+    <tr>
+        <th><label for="id_provider">Provider</label></th>
+        <td>
             <select name="provider" id="id_provider" style="width: 100%; padding: 0.5rem;">
                 <option value="">--- select provider ---</option>
             </select>
-          {% elif field.name == 'department' %}
+        </td>
+    </tr>
+    <tr>
+        <th><label for="id_department">Department</label></th>
+        <td>
             <select name="department" id="id_department" style="width: 100%; padding: 0.5rem;">
                 <option value="">--- select department ---</option>
             </select>
-          {% elif field.name == 'reasonid' %}
-              <input type="text" id="reason-search-input" placeholder="Search appointment reason" style="width: 100%; padding: 0.5rem;" />
-              <input type="hidden" name="reasonid" id="id_reasonid" />
-              <div id="reason-search-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto; display: none; position: absolute; background-color: white; width: 100%; z-index: 100;"></div>
-          {% else %}
-            {{ field }}
-          {% endif %}
-          {% if field.help_text %}
-            <small style="display: block; color: #666;">{{ field.help_text }}</small>
-          {% endif %}
-          {% for error in field.errors %}
-            <div style="color: red;">{{ error }}</div>
-          {% endfor %}
+            <small style="display: block; color: #666;">{{ form.department.help_text }}</small>
         </td>
-      </tr>
-    {% endfor %}
+    </tr>
+    <tr>
+        <th>
+            <label for="ordertype-search-input">Referral Order Type</label>
+            <div class="help-icon">?
+                <span class="tooltip-text">{{ form.ordertypeid.help_text }}</span>
+            </div>
+        </th>
+        <td>
+            <input type="text" id="ordertype-search-input" placeholder="Search for the clinical service to order" style="width: 100%; padding: 0.5rem;" />
+            <input type="hidden" name="ordertypeid" id="id_ordertypeid" />
+            <div id="ordertype-search-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto; display: none; position: absolute; background-color: white; width: 100%; z-index: 100;"></div>
+            <span id="ordertype-loading-indicator" style="display: none; margin-left: 5px;" class="animated-dots"><span>.</span><span>.</span><span>.</span></span>
+        </td>
+    </tr>
+    <tr>
+        <th><label for="id_patient_insurance_id">Payer (optional)</label></th>
+        <td>
+            <select name="patient_insurance_id" id="id_patient_insurance_id" style="width: 100%; padding: 0.5rem;">
+                <option value="">--- select a patient first ---</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <th><label for="id_is_urgent">Is Urgent</label></th>
+        <td><input type="checkbox" name="is_urgent" id="id_is_urgent"></td>
+    </tr>
+    <tr>
+        <th><label for="id_provider_note">Note to Provider (optional)</label></th>
+        <td><textarea name="provider_note" id="id_provider_note" rows="3" style="width: 100%;"></textarea></td>
+    </tr>
+    <tr>
+        <th><label for="id_note_to_patient">Note to Patient (optional)</label></th>
+        <td><textarea name="note_to_patient" id="id_note_to_patient" rows="3" style="width: 100%;"></textarea></td>
+    </tr>
   </table>
-  <input type="date" id="search-date" style="margin-left: 1rem; padding: 0.5rem;" />
-  <button type="button" id="search-slots-btn" style="margin-top: 1rem; padding: 0.5rem 1rem;">Search For Open Slots</button>
+  <input type="hidden" id="selected_date" name="selected_date">
+  
+  <div style="margin-top: 1rem;">
+      <label for="date-input-display">Suggested Date (optional)</label>
+      <div id="date-selector-ui" style="display: flex; align-items: center; position: relative;">
+          <input type="text" id="date-input-display" placeholder="MM/DD/YYYY" style="padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+          <div id="calendar-wrapper" style="display: none; position: absolute; top: 100%; left: 0; background-color: white; border: 1px solid #ccc; z-index: 1000; padding: 1rem;">
+              <div style="display: flex; align-items: center;">
+                  <h4>Date of Service (optional)</h4>
+                  <small style="margin-left: 1rem; color: #666;">* = Dates with open slots</small>
+              </div>
+              <div id="calendar-container" style="max-width: 600px;">
+                  <!-- Calendar will be generated here by JS -->
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <button type="button" id="create-referral-btn" class="action-btn book-btn" style="margin-top: 1rem;">Create Referral</button>
 </form>
-
-<hr style="margin-top: 2rem; margin-bottom: 2rem;">
-
-<h3>Available Slots</h3>
-<div id="results-container">
-    <table id="slots-table" style="display: none;">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Time</th>
-                <th>Department</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Results will be inserted here by JavaScript -->
-        </tbody>
-    </table>
-    <p id="loading-indicator" style="display: none;">Searching for open slots<span class="animated-dots"><span>.</span><span>.</span><span>.</span></span></p>
-    <p id="no-results-message" style="display: none;">No open slots found for the selected criteria.</p>
-</div>
 
 <style>
     /* CSS for animated dots */
@@ -128,493 +192,548 @@
 </style>
 
 <script>
-    let allReasons = [];
-    let allDepartments = [];
-    let searchTimeout; // Declare searchTimeout here
-    let reasonSearchTimeout; // New timeout for reason search
-
-    // --- Persistence Logic ---
-    const STORAGE_KEYS = {
-        PROVIDER: 'newReferralProvider',
-        DEPARTMENT: 'newReferralDepartment',
-        REASON_ID: 'newReferralReasonId',
-        SEARCH_DATE: 'newReferralSearchDate',
-        PATIENT_ID: 'newReferralPatientId',
-        PAYER_CODE: 'newReferralPayerCode',
-        IS_URGENT: 'newReferralIsUrgent',
-        PATIENT_NAME: 'newReferralPatientName',
-        REASON_NAME: 'newReferralReasonName', // New storage key for reason search input
-    };
-
     document.addEventListener('DOMContentLoaded', () => {
+        // Form elements
         const form = document.getElementById('new-referral-form');
-        const providerSelect = form.querySelector('[name="provider"]');
-        const departmentSelect = form.querySelector('[name="department"]');
-        const reasonIdSelect = form.querySelector('[name="reasonid"]'); // This is now the hidden input
-        const reasonSearchInput = document.getElementById('reason-search-input');
-        const reasonSearchResults = document.getElementById('reason-search-results');
-        const searchDateInput = document.getElementById('search-date');
-        const patientIdInput = form.querySelector('[name="patient_id"]');
+        const patientIdInput = document.getElementById('id_patient_id');
         const patientSearchInput = document.getElementById('patient-search-input');
         const patientSearchResults = document.getElementById('patient-search-results');
-        console.log('patientSearchInput element:', patientSearchInput); // Debugging
         const specialtyInput = form.querySelector('[name="specialty"]');
-        const searchButton = document.getElementById('search-slots-btn');
-        const table = document.getElementById('slots-table');
-        const tableBody = table.querySelector('tbody');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const noResultsMessage = document.getElementById('no-results-message');
+        const providerSelect = form.querySelector('[name="provider"]');
+        const departmentSelect = form.querySelector('[name="department"]');
+        const patientInsuranceSelect = document.getElementById('id_patient_insurance_id');
+        const ordertypeIdInput = document.getElementById('id_ordertypeid');
+        const ordertypeSearchInput = document.getElementById('ordertype-search-input');
+        const ordertypeSearchResults = document.getElementById('ordertype-search-results');
+        const ordertypeLoadingIndicator = document.getElementById('ordertype-loading-indicator');
+        const selectedDateInput = document.getElementById('selected_date');
+        let searchTimeout;
+        let ordertypeSearchTimeout;
 
-    function saveFormState() {
-        sessionStorage.setItem(STORAGE_KEYS.PROVIDER, providerSelect.value);
-        sessionStorage.setItem(STORAGE_KEYS.DEPARTMENT, departmentSelect.value);
-        sessionStorage.setItem(STORAGE_KEYS.REASON_ID, reasonIdSelect.value);
-        sessionStorage.setItem(STORAGE_KEYS.SEARCH_DATE, searchDateInput.value);
-        sessionStorage.setItem(STORAGE_KEYS.PATIENT_ID, patientIdInput.value);
-        sessionStorage.setItem(STORAGE_KEYS.PAYER_CODE, form.querySelector('[name="payer_code"]').value);
-        sessionStorage.setItem(STORAGE_KEYS.IS_URGENT, form.querySelector('[name="is_urgent"]').checked);
-        sessionStorage.setItem(STORAGE_KEYS.PATIENT_NAME, patientSearchInput.value);
-        sessionStorage.setItem(STORAGE_KEYS.REASON_NAME, reasonSearchInput.value); // Save reason search input
-    }
+        // Buttons
+        const createReferralBtn = document.getElementById('create-referral-btn');
 
-    function loadFormState() {
-        const storedProvider = sessionStorage.getItem(STORAGE_KEYS.PROVIDER);
-        const storedDepartment = sessionStorage.getItem(STORAGE_KEYS.DEPARTMENT);
-        const storedReasonId = sessionStorage.getItem(STORAGE_KEYS.REASON_ID);
-        const storedSearchDate = sessionStorage.getItem(STORAGE_KEYS.SEARCH_DATE);
-        const storedPatientId = sessionStorage.getItem(STORAGE_KEYS.PATIENT_ID);
-        const storedPayerCode = sessionStorage.getItem(STORAGE_KEYS.PAYER_CODE);
-        const storedIsUrgent = sessionStorage.getItem(STORAGE_KEYS.IS_URGENT);
-        const storedPatientName = sessionStorage.getItem(STORAGE_KEYS.PATIENT_NAME);
-        const storedReasonName = sessionStorage.getItem(STORAGE_KEYS.REASON_NAME); // Load reason search input
+        // Date Selector UI
+        const dateInputDisplay = document.getElementById('date-input-display');
+        const calendarWrapper = document.getElementById('calendar-wrapper');
+        
+        // Calendar elements
+        const calendarContainer = document.getElementById('calendar-container');
+        let currentDate = new Date();
+        const calendarCache = {}; // Cache for monthly availability
 
-        if (storedProvider) {
-            providerSelect.value = storedProvider;
-        }
-        if (storedDepartment) {
-            departmentSelect.value = storedDepartment;
-        }
-        if (storedReasonId) {
-            reasonIdSelect.value = storedReasonId;
-        }
-        if (storedSearchDate) {
-            searchDateInput.value = storedSearchDate;
-        }
-        if (storedPatientId) {
-            patientIdInput.value = storedPatientId;
-        }
-        if (storedPayerCode) {
-            form.querySelector('[name="payer_code"]').value = storedPayerCode;
-        }
-        if (storedIsUrgent) {
-            form.querySelector('[name="is_urgent"]').checked = (storedIsUrgent === 'true');
-        }
-        if (storedPatientName) {
-            patientSearchInput.value = storedPatientName;
-        }
-        if (storedReasonName) {
-            reasonSearchInput.value = storedReasonName;
-        }
-    }
+        const STORAGE_KEYS = {
+            PROVIDER: 'newReferralProvider',
+            DEPARTMENT: 'newReferralDepartment',
+            ORDER_TYPE_ID: 'newReferralOrderTypeId',
+            ORDER_TYPE_NAME: 'newReferralOrderTypeName',
+            PATIENT_ID: 'newReferralPatientId',
+            PATIENT_NAME: 'newReferralPatientName',
+            PAYER_CODE: 'newReferralPayerCode', // This will now store patientinsuranceid
+        };
 
-    // --- Department Dropdown Logic (unchanged) ---
-    async function fetchAndPopulateDepartments(providerId) {
-        departmentSelect.innerHTML = '<option value="">--- loading departments ---</option>';
-        departmentSelect.disabled = true;
-        try {
-            const url = providerId ? `/provider-departments/${providerId}/` : '/provider-departments/';
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+        function saveFormState() {
+            sessionStorage.setItem(STORAGE_KEYS.PROVIDER, providerSelect.value);
+            sessionStorage.setItem(STORAGE_KEYS.DEPARTMENT, departmentSelect.value);
+            sessionStorage.setItem(STORAGE_KEYS.ORDER_TYPE_ID, ordertypeIdInput.value);
+            sessionStorage.setItem(STORAGE_KEYS.ORDER_TYPE_NAME, ordertypeSearchInput.value);
+            sessionStorage.setItem(STORAGE_KEYS.PATIENT_ID, patientIdInput.value);
+            sessionStorage.setItem(STORAGE_KEYS.PATIENT_NAME, patientSearchInput.value);
+            sessionStorage.setItem(STORAGE_KEYS.PAYER_CODE, patientInsuranceSelect.value);
+        }
+
+        function loadFormState() {
+            const storedProvider = sessionStorage.getItem(STORAGE_KEYS.PROVIDER);
+            if (storedProvider) providerSelect.value = storedProvider;
+            const storedOrderTypeId = sessionStorage.getItem(STORAGE_KEYS.ORDER_TYPE_ID);
+            if (storedOrderTypeId) ordertypeIdInput.value = storedOrderTypeId;
+            const storedOrderTypeName = sessionStorage.getItem(STORAGE_KEYS.ORDER_TYPE_NAME);
+            if (storedOrderTypeName) ordertypeSearchInput.value = storedOrderTypeName;
+            const storedPatientId = sessionStorage.getItem(STORAGE_KEYS.PATIENT_ID);
+            if (storedPatientId) {
+                patientIdInput.value = storedPatientId;
+                fetchAndPopulateInsurances(storedPatientId); // Fetch insurances on load
             }
-            allDepartments = await response.json();
-            populateDepartmentDropdown(allDepartments);
-            departmentSelect.disabled = false;
-            const storedDepartment = sessionStorage.getItem(STORAGE_KEYS.DEPARTMENT);
-            if (storedDepartment) {
-                departmentSelect.value = storedDepartment;
-            }
-            // No longer calling fetchAndPopulateReasons here, as it's now a search input
-        } catch (error) {
-            console.error('Error fetching departments:', error);
-            departmentSelect.innerHTML = '<option value="">--- error loading departments ---</option>';
-            departmentSelect.disabled = true;
-        }
-    }
-
-    function populateDepartmentDropdown(departmentsToDisplay) {
-        departmentSelect.innerHTML = '<option value="">--- select department ---</option>';
-        departmentsToDisplay.forEach((dept, index) => {
-            const option = document.createElement('option');
-            option.value = dept.id;
-            option.textContent = dept.name;
-            if (index === 0) {
-                option.textContent += ' * most often department';
-            }
-            departmentSelect.appendChild(option);
-        });
-    }
-
-    // --- Event Listeners and Initial Load ---
-    providerSelect.addEventListener('change', () => {
-        saveFormState();
-        autoPopulateSpecialty();
-        fetchAndPopulateDepartments(providerSelect.value);
-    });
-    departmentSelect.addEventListener('change', saveFormState); // Only save state, no reason fetching here
-    reasonIdSelect.addEventListener('change', saveFormState); // For the hidden input
-    searchDateInput.addEventListener('change', saveFormState);
-    patientIdInput.addEventListener('input', saveFormState);
-    patientSearchInput.addEventListener('keyup', () => {
-        console.log('Patient search input event fired.'); // Debugging
-        clearTimeout(searchTimeout);
-        patientSearchResults.style.display = 'none';
-        patientSearchResults.innerHTML = '';
-        patientIdInput.value = ''; // Clear hidden ID on new search
-        saveFormState();
-
-        const query = patientSearchInput.value.trim();
-        console.log('Patient search query:', query); // Debugging
-        if (query.length < 2) {
-            return;
+            const storedPatientName = sessionStorage.getItem(STORAGE_KEYS.PATIENT_NAME);
+            if (storedPatientName) patientSearchInput.value = storedPatientName;
+            // Payer is loaded via fetchAndPopulateInsurances
         }
 
-        searchTimeout = setTimeout(async () => {
-            console.log('Making patient search AJAX call for query:', query); // Debugging
+        async function fetchAndPopulateInsurances(patientId) {
+            if (!patientId) {
+                patientInsuranceSelect.innerHTML = '<option value="">--- select a patient first ---</option>';
+                return;
+            }
+            patientInsuranceSelect.innerHTML = '<option value="">--- loading insurances ---</option>';
+            patientInsuranceSelect.disabled = true;
             try {
-                const response = await fetch(`/patient-search/?query=${encodeURIComponent(query)}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                const response = await fetch(`/patient-insurances/${patientId}/`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const insurances = await response.json();
+                patientInsuranceSelect.innerHTML = '<option value="">--- select payer ---</option>';
+                if (insurances.length > 0) {
+                    insurances.forEach(ins => {
+                        const option = document.createElement('option');
+                        option.value = ins.id;
+                        option.textContent = ins.name;
+                        patientInsuranceSelect.appendChild(option);
+                    });
+                } else {
+                    patientInsuranceSelect.innerHTML = '<option value="">--- no insurances found ---</option>';
                 }
-                const patients = await response.json();
-                console.log('Patients received from AJAX:', patients); // Debugging
-                displayPatientSearchResults(patients);
+                patientInsuranceSelect.disabled = false;
+                const storedPayer = sessionStorage.getItem(STORAGE_KEYS.PAYER_CODE);
+                if (storedPayer) {
+                    patientInsuranceSelect.value = storedPayer;
+                }
             } catch (error) {
-                console.error('Error searching patients:', error);
-                patientSearchResults.innerHTML = '<div style="padding: 8px; color: red;">Error searching patients.</div>';
+                console.error('Error fetching patient insurances:', error);
+                patientInsuranceSelect.innerHTML = '<option value="">--- error loading insurances ---</option>';
+            }
+        }
+
+        async function fetchAndPopulateDepartments(providerId) {
+            departmentSelect.innerHTML = '<option value="">--- loading departments ---</option>';
+            departmentSelect.disabled = true;
+            try {
+                const url = providerId ? `/provider-departments/${providerId}/` : '/provider-departments/';
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const departments = await response.json();
+                departmentSelect.innerHTML = '<option value="">--- select department ---</option>';
+                departments.forEach((dept, index) => {
+                    const option = document.createElement('option');
+                    option.value = dept.id;
+                    option.textContent = dept.name;
+                    if (index === 0) option.textContent += ' * most often department';
+                    departmentSelect.appendChild(option);
+                });
+                departmentSelect.disabled = false;
+                const storedDepartment = sessionStorage.getItem(STORAGE_KEYS.DEPARTMENT);
+                if (storedDepartment) {
+                    departmentSelect.value = storedDepartment;
+                }
+            } catch (error) {
+                console.error('Error fetching departments:', error);
+                departmentSelect.innerHTML = '<option value="">--- error loading departments ---</option>';
+            }
+        }
+
+        function displayPatientSearchResults(patients) {
+            patientSearchResults.innerHTML = '';
+            if (patients.length > 0) {
+                patients.forEach(patient => {
+                    const resultItem = document.createElement('div');
+                    resultItem.style.padding = '8px';
+                    resultItem.style.cursor = 'pointer';
+                    resultItem.textContent = `${patient.name} (ID: ${patient.patientid})`;
+                    resultItem.dataset.patientId = patient.patientid;
+                    resultItem.dataset.patientName = patient.name;
+                    resultItem.addEventListener('click', (event) => {
+                        const patientId = event.target.dataset.patientId;
+                        patientSearchInput.value = event.target.dataset.patientName;
+                        patientIdInput.value = patientId;
+                        patientSearchResults.style.display = 'none';
+                        fetchAndPopulateInsurances(patientId); // Fetch insurances when patient is selected
+                        saveFormState();
+                    });
+                    patientSearchResults.appendChild(resultItem);
+                });
+                patientSearchResults.style.display = 'block';
+            } else {
+                patientSearchResults.innerHTML = '<div style="padding: 8px;">No patients found.</div>';
                 patientSearchResults.style.display = 'block';
             }
-        }, 300); // Debounce for 300ms
-    });
+        }
 
-    function displayPatientSearchResults(patients) {
-        console.log('Inside displayPatientSearchResults, patients:', patients); // Debugging
-        patientSearchResults.innerHTML = '';
-        if (patients.length > 0) {
-            patients.forEach(patient => {
-                const resultItem = document.createElement('div');
-                resultItem.style.padding = '8px';
-                resultItem.style.borderBottom = '1px solid #eee';
-                resultItem.style.cursor = 'pointer';
-                resultItem.textContent = `${patient.name} (ID: ${patient.patientid})`;
-                resultItem.dataset.patientId = patient.patientid;
-                resultItem.dataset.patientName = patient.name;
-                resultItem.addEventListener('click', (event) => {
-                    patientSearchInput.value = event.target.dataset.patientName;
-                    patientIdInput.value = event.target.dataset.patientId;
-                    patientSearchResults.style.display = 'none';
-                    saveFormState();
+        function displayOrderTypeSearchResults(orderTypes) {
+            ordertypeSearchResults.innerHTML = '';
+            if (orderTypes.length > 0) {
+                orderTypes.forEach(orderType => {
+                    const resultItem = document.createElement('div');
+                    resultItem.style.padding = '8px';
+                    resultItem.style.cursor = 'pointer';
+                    resultItem.textContent = `${orderType.name} (ID: ${orderType.id})`;
+                    resultItem.dataset.ordertypeId = orderType.id;
+                    resultItem.dataset.ordertypeName = orderType.name;
+                    resultItem.addEventListener('click', (event) => {
+                        ordertypeSearchInput.value = event.target.dataset.ordertypeName;
+                        ordertypeIdInput.value = event.target.dataset.ordertypeId;
+                        ordertypeSearchResults.style.display = 'none';
+                        saveFormState();
+                    });
+                    ordertypeSearchResults.appendChild(resultItem);
                 });
-                patientSearchResults.appendChild(resultItem);
-            });
-            patientSearchResults.style.display = 'block';
-        } else {
-            patientSearchResults.innerHTML = '<div style="padding: 8px;">No patients found.</div>';
-            patientSearchResults.style.display = 'block';
-        }
-    }
-
-    // New Reason Search Logic
-    reasonSearchInput.addEventListener('keyup', () => {
-        console.log('Reason search input event fired.');
-        clearTimeout(reasonSearchTimeout);
-        reasonSearchResults.style.display = 'none';
-        reasonSearchResults.innerHTML = '';
-        reasonIdSelect.value = ''; // Clear hidden ID on new search
-        saveFormState();
-
-        const query = reasonSearchInput.value.trim();
-        console.log('Reason search query:', query);
-        if (query.length < 2) { // Only search with 2 or more characters
-            return;
-        }
-
-        reasonSearchTimeout = setTimeout(async () => {
-            console.log('Making reason search AJAX call for query:', query);
-            const reasonLoadingIndicator = document.getElementById('reason-loading-indicator');
-            reasonLoadingIndicator.style.display = 'inline'; // Show loading
-            try {
-                const response = await fetch(`/search-appointment-reasons/?query=${encodeURIComponent(query)}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const reasons = await response.json();
-                console.log('Reasons received from AJAX:', reasons);
-                displayReasonSearchResults(reasons);
-            } catch (error) {
-                console.error('Error searching reasons:', error);
-                reasonSearchResults.innerHTML = '<div style="padding: 8px; color: red;">Error searching reasons.</div>';
-                reasonSearchResults.style.display = 'block';
-            } finally {
-                reasonLoadingIndicator.style.display = 'none'; // Hide loading
+                ordertypeSearchResults.style.display = 'block';
+            } else {
+                ordertypeSearchResults.innerHTML = '<div style="padding: 8px;">No order types found.</div>';
+                ordertypeSearchResults.style.display = 'block';
             }
-        }, 300); // Debounce for 300ms
-    });
+        }
 
-    function displayReasonSearchResults(reasons) {
-        console.log('Inside displayReasonSearchResults, reasons:', reasons);
-        reasonSearchResults.innerHTML = '';
-        if (reasons.length > 0) {
-            reasons.forEach(reason => {
-                const resultItem = document.createElement('div');
-                resultItem.style.padding = '8px';
-                resultItem.style.borderBottom = '1px solid #eee';
-                resultItem.style.cursor = 'pointer';
-                resultItem.textContent = `${reason.name} (ID: ${reason.id})`;
-                resultItem.dataset.reasonId = reason.id;
-                resultItem.dataset.reasonName = reason.name;
-                resultItem.addEventListener('click', (event) => {
-                    reasonSearchInput.value = event.target.dataset.reasonName;
-                    reasonIdSelect.value = event.target.dataset.reasonId;
-                    reasonSearchResults.style.display = 'none';
-                    saveFormState();
-                });
-                reasonSearchResults.appendChild(resultItem);
-            });
-            reasonSearchResults.style.display = 'block';
-        } else {
-            reasonSearchResults.innerHTML = '<div style="padding: 8px;">No reasons found.</div>';
-            reasonSearchResults.style.display = 'block';
-        }
-    }
-
-    // Hide results when clicking outside
-    document.addEventListener('click', (event) => {
-        if (!patientSearchInput.contains(event.target) && !patientSearchResults.contains(event.target)) {
-            patientSearchResults.style.display = 'none';
-        }
-        if (!reasonSearchInput.contains(event.target) && !reasonSearchResults.contains(event.target)) {
-            reasonSearchResults.style.display = 'none';
-        }
-    });
-    form.querySelector('[name="payer_code"]').addEventListener('input', saveFormState);
-    form.querySelector('[name="is_urgent"]').addEventListener('change', saveFormState);
-    specialtyInput.addEventListener('change', () => {
-        saveFormState();
-        sortProviderDropdown();
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-        loadFormState();
-        if (providerSelect.value) {
-            autoPopulateSpecialty();
-            fetchAndPopulateDepartments(providerSelect.value);
-        }
-        if (!providerSelect.value && specialtyInput.value) {
-            sortProviderDropdown();
-        }
-    });
-
-    // --- Helper Functions ---
-    async function autoPopulateSpecialty() {
-        const selectedProviderId = providerSelect.value;
-        if (selectedProviderId) {
-            try {
-                const response = await fetch(`/provider-details/${selectedProviderId}/`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const providerDetails = await response.json();
-                if (providerDetails.specialty) {
-                    specialtyInput.value = providerDetails.specialty;
-                } else {
+        async function autoPopulateSpecialty() {
+            const selectedProviderId = providerSelect.value;
+            if (selectedProviderId) {
+                try {
+                    const response = await fetch(`/provider-details/${selectedProviderId}/`);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const providerDetails = await response.json();
+                    specialtyInput.value = providerDetails.specialty || '';
+                } catch (error) {
+                    console.error('Error fetching provider details:', error);
                     specialtyInput.value = '';
                 }
-            } catch (error) {
-                console.error('Error fetching provider details:', error);
+            } else {
                 specialtyInput.value = '';
             }
-        } else {
-            specialtyInput.value = '';
         }
-    }
 
-    async function sortProviderDropdown() {
-        if (providerSelect.value) {
-            return;
-        }
-        const selectedSpecialty = specialtyInput.value;
-        let url = '/sorted-providers/';
-        if (selectedSpecialty) {
-            url += `?specialty=${encodeURIComponent(selectedSpecialty)}`;
-        }
-        try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+        async function sortProviderDropdown() {
+            const selectedSpecialty = specialtyInput.value;
+            let url = '/sorted-providers/';
+            if (selectedSpecialty) {
+                url += `?specialty=${encodeURIComponent(selectedSpecialty)}`;
             }
-            const sortedProviders = await response.json();
-            const currentProviderValue = providerSelect.value;
-            providerSelect.innerHTML = '<option value="">--- select provider ---</option>';
-            sortedProviders.forEach(provider => {
-                const option = document.createElement('option');
-                option.value = provider.providerid;
-                option.dataset.npi = provider.npi;
-                option.textContent = provider.full_name + (provider.specialty ? ` (${provider.specialty})` : '');
-                providerSelect.appendChild(option);
-            });
-            if (currentProviderValue) {
-                providerSelect.value = currentProviderValue;
-            }
-        } catch (error) {
-            console.error('Error sorting providers:', error);
-        }
-    }
-
-    // --- Search Logic ---
-    searchButton.addEventListener('click', async () => {
-        const providerId = providerSelect.value;
-        const departmentId = departmentSelect.value;
-        const reasonId = reasonIdSelect.value;
-        const searchDate = searchDateInput.value;
-        const payerCode = form.querySelector('[name="payer_code"]').value;
-
-        if (!providerId) {
-            alert('Please select a provider.');
-            return;
-        }
-        if (!departmentId) {
-            alert('Please select a department.');
-            return;
-        }
-        if (!reasonId) {
-            alert('Please select a Reason.');
-            return;
-        }
-
-        table.style.display = 'none';
-        noResultsMessage.style.display = 'none';
-        loadingIndicator.style.display = 'block';
-        tableBody.innerHTML = '';
-
-        try {
-            const params = new URLSearchParams();
-            params.append('provider_id', providerId);
-            params.append('department_id', departmentId);
-            params.append('reasonid', reasonId);
-            if (searchDate) {
-                const [year, month, day] = searchDate.split('-');
-                params.append('search_date', `${month}/${day}/${year}`);
-            }
-
-            const response = await fetch(`/find-slots/?${params.toString()}`);
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            }
-
-            const slots = await response.json();
-
-            loadingIndicator.style.display = 'none';
-
-            if (slots.length > 0) {
-                slots.forEach(slot => {
-                    const formattedTime = new Date(`2000/01/01 ${slot.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
-                    const row = tableBody.insertRow();
-                    const createReferralButton = document.createElement('button');
-                    createReferralButton.className = 'action-btn create-referral-btn book-btn';
-                    createReferralButton.textContent = 'Create Referral';
-                    // No longer need appointment-specific data on the button for referral creation
-                    // createReferralButton.dataset.appointmentId = slot.appointmentid;
-                    // createReferralButton.dataset.appointmentDate = slot.date;
-                    // createReferralButton.dataset.appointmentTime = slot.time;
-
-                    createReferralButton.addEventListener('click', async (event) => {
-                        const btn = event.target;
-                        btn.disabled = true;
-                        btn.textContent = 'Processing...';
-
-                        const selectedProviderOption = providerSelect.options[providerSelect.selectedIndex];
-                        const providerNpi = selectedProviderOption ? selectedProviderOption.dataset.npi : '';
-                        const patientId = patientIdInput.value;
-                        const payerCode = form.querySelector('[name="payer_code"]').value;
-                        const isUrgent = form.querySelector('[name="is_urgent"]').checked;
-                        const specialty = specialtyInput.value;
-
-                        if (!patientId) {
-                            alert('Please select a patient.');
-                            btn.disabled = false;
-                            btn.textContent = 'Create Referral';
-                            return;
-                        }
-                        if (!providerNpi) {
-                            alert('Please select a provider.');
-                            btn.disabled = false;
-                            btn.textContent = 'Create Referral';
-                            return;
-                        }
-
-                        try {
-                            // Step 1: Create referral order
-                            const referralOrderPayload = {
-                                patient_id: patientId,
-                                provider_id: providerNpi, // Use NPI for local referral creation
-                                payer_code: payerCode,
-                                specialty: specialty,
-                                is_urgent: isUrgent,
-                                department_id: departmentSelect.value,
-                            };
-                            console.log('Creating referral order with payload:', referralOrderPayload);
-                            const referralOrderResponse = await fetch('/create-referral-order/', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'X-CSRFToken': '{{ csrf_token }}',
-                                },
-                                body: JSON.stringify(referralOrderPayload),
-                            });
-
-                            if (!referralOrderResponse.ok) {
-                                const errorData = await referralOrderResponse.json();
-                                throw new Error(errorData.error || `Failed to create referral order: ${referralOrderResponse.status}`);
-                            }
-                            const referralOrderData = await referralOrderResponse.json();
-                            const localReferralId = referralOrderData.local_referral_id;
-                            console.log('Referral order created with local ID:', localReferralId);
-
-                            alert('Referral created successfully!');
-                            window.location.href = `/referrals/${localReferralId}/`; // Redirect to referral detail page
-
-                        } catch (error) {
-                            alert(`Error: ${error.message}`);
-                            console.error('Referral creation error:', error);
-                            btn.disabled = false;
-                            btn.textContent = 'Create Referral';
-                        }
-                    });
-
-                    row.innerHTML = `
-                        <td>${slot.date}</td>
-                        <td>${formattedTime}</td>
-                        <td>${slot.department}</td>
-                        <td></td>
-                    `;
-                    row.querySelector('td:last-child').appendChild(createReferralButton);
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const sortedProviders = await response.json();
+                const currentProviderValue = providerSelect.value;
+                providerSelect.innerHTML = '<option value="">--- select provider ---</option>';
+                sortedProviders.forEach(provider => {
+                    const option = document.createElement('option');
+                    option.value = provider.providerid;
+                    option.dataset.npi = provider.npi;
+                    option.textContent = provider.full_name + (provider.specialty ? ` (${provider.specialty})` : '');
+                    providerSelect.appendChild(option);
                 });
-                table.style.display = 'table';
-            } else {
-                noResultsMessage.style.display = 'block';
+                if (currentProviderValue) {
+                    providerSelect.value = currentProviderValue;
+                }
+            } catch (error) {
+                console.error('Error sorting providers:', error);
+            }
+        }
+
+        // --- Calendar Functions ---
+        function renderCalendar(year, month, availableDates, isLoading = false) {
+            calendarContainer.innerHTML = ''; // Clear previous calendar
+
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            header.style.marginBottom = '1rem';
+
+            const prevButton = document.createElement('button');
+            prevButton.textContent = '<';
+            prevButton.addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                fetchAndRenderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+            });
+
+            const monthYearLabel = document.createElement('h4');
+            monthYearLabel.textContent = `${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}`;
+
+            if (isLoading) {
+                const loadingSpan = document.createElement('span');
+                loadingSpan.textContent = ' (Loading...)';
+                loadingSpan.style.fontSize = '0.9rem';
+                loadingSpan.style.color = '#666';
+                monthYearLabel.appendChild(loadingSpan);
             }
 
-        } catch (error) {
-            loadingIndicator.style.display = 'none';
-            alert(`An error occurred: ${error.message}`);
-            console.error('Error fetching slots:', error);
+            const nextButton = document.createElement('button');
+            nextButton.textContent = '>';
+            nextButton.addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                fetchAndRenderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+            });
+
+            header.appendChild(prevButton);
+            header.appendChild(monthYearLabel);
+            header.appendChild(nextButton);
+            calendarContainer.appendChild(header);
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+
+            const thead = document.createElement('thead');
+            const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const trHead = document.createElement('tr');
+            daysOfWeek.forEach(day => {
+                const th = document.createElement('th');
+                th.textContent = day;
+                th.style.textAlign = 'center';
+                th.style.padding = '0.5rem';
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            let date = 1;
+
+            for (let i = 0; i < 6; i++) {
+                const tr = document.createElement('tr');
+                for (let j = 0; j < 7; j++) {
+                    const td = document.createElement('td');
+                    td.style.border = '1px solid #ddd';
+                    td.style.padding = '1rem';
+                    td.style.textAlign = 'center';
+                    td.style.cursor = 'pointer';
+
+                    if (i === 0 && j < firstDay) {
+                        // Empty cells before the first day
+                    } else if (date > daysInMonth) {
+                        // Empty cells after the last day
+                    } else {
+                        td.textContent = date;
+                        const dateStringForDataset = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+                        td.dataset.date = dateStringForDataset; 
+
+                        const dateStringForDisplay = `${String(month + 1).padStart(2, '0')}/${String(date).padStart(2, '0')}/${year}`;
+                        if (availableDates.has(dateStringForDisplay)) {
+                            td.textContent += ' *';
+                            td.style.fontWeight = 'bold';
+                        }
+                        
+                        td.addEventListener('click', (e) => {
+                            const [y, m, d] = e.target.dataset.date.split('-');
+                            dateInputDisplay.value = `${m}/${d}/${y}`;
+                            selectedDateInput.value = e.target.dataset.date;
+                            calendarWrapper.style.display = 'none';
+                        });
+                        date++;
+                    }
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+                if (date > daysInMonth) break;
+            }
+            table.appendChild(tbody);
+            calendarContainer.appendChild(table);
         }
+
+        async function fetchAndRenderCalendar(year, month) {
+            const cacheKey = `${year}-${month}`;
+            if (calendarCache[cacheKey]) {
+                renderCalendar(year, month, calendarCache[cacheKey], false);
+                return;
+            }
+
+            renderCalendar(year, month, new Set(), true); // Render with loading indicator
+
+            const providerId = providerSelect.value;
+            const departmentId = departmentSelect.value;
+
+            if (!providerId || !departmentId) {
+                return; // Already rendered empty calendar
+            }
+
+            try {
+                const params = new URLSearchParams();
+                params.append('provider_id', providerId);
+                params.append('department_id', departmentId);
+                
+                const startDate = new Date(year, month, 1);
+                const endDate = new Date(year, month + 1, 0);
+                params.append('startdate', `${String(startDate.getMonth() + 1).padStart(2, '0')}/${String(startDate.getDate()).padStart(2, '0')}/${startDate.getFullYear()}`);
+                params.append('enddate', `${String(endDate.getMonth() + 1).padStart(2, '0')}/${String(endDate.getDate()).padStart(2, '0')}/${endDate.getFullYear()}`);
+
+                const response = await fetch(`/find-slots/?${params.toString()}`);
+                if (!response.ok) throw new Error('Failed to fetch slots');
+                const slots = await response.json();
+
+                const datesWithSlots = new Set();
+                slots.forEach(slot => {
+                    datesWithSlots.add(slot.date);
+                });
+
+                calendarCache[cacheKey] = datesWithSlots; // Store in cache
+                renderCalendar(year, month, datesWithSlots, false); // Re-render with data
+            } catch (error) {
+                console.error('Error fetching availability:', error);
+                renderCalendar(year, month, new Set(), false); // Re-render without data on error
+            }
+        }
+
+        // --- Event Listeners ---
+        dateInputDisplay.addEventListener('focus', () => {
+            calendarWrapper.style.display = 'block';
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!calendarWrapper.contains(event.target) && event.target !== dateInputDisplay) {
+                calendarWrapper.style.display = 'none';
+            }
+        });
+
+        dateInputDisplay.addEventListener('change', () => {
+            const dateParts = dateInputDisplay.value.split('/');
+            if (dateParts.length === 3) {
+                const [month, day, year] = dateParts;
+                if (month && day && year && year.length === 4) {
+                    selectedDateInput.value = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                } else {
+                    selectedDateInput.value = '';
+                }
+            } else {
+                selectedDateInput.value = '';
+            }
+        });
+        
+        patientInsuranceSelect.addEventListener('change', saveFormState);
+
+        providerSelect.addEventListener('change', () => {
+            saveFormState();
+            Object.keys(calendarCache).forEach(key => delete calendarCache[key]); // Clear cache
+            fetchAndPopulateDepartments(providerSelect.value).then(() => {
+                fetchAndRenderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+            });
+        });
+
+        departmentSelect.addEventListener('change', () => {
+            saveFormState();
+            Object.keys(calendarCache).forEach(key => delete calendarCache[key]); // Clear cache
+            fetchAndRenderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+        });
+
+        patientSearchInput.addEventListener('keyup', () => {
+            clearTimeout(searchTimeout);
+            const query = patientSearchInput.value.trim();
+            patientSearchResults.style.display = 'none';
+            patientSearchResults.innerHTML = '';
+            if (query.length < 2) {
+                // Clear patient-dependent fields if search is cleared
+                patientIdInput.value = '';
+                fetchAndPopulateInsurances(null);
+                saveFormState();
+                return;
+            }
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/patient-search/?query=${encodeURIComponent(query)}`);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const patients = await response.json();
+                    displayPatientSearchResults(patients);
+                } catch (error) {
+                    console.error('Error searching patients:', error);
+                }
+            }, 300);
+        });
+
+        ordertypeSearchInput.addEventListener('keyup', () => {
+            clearTimeout(ordertypeSearchTimeout);
+            ordertypeSearchResults.style.display = 'none';
+            ordertypeSearchResults.innerHTML = '';
+            ordertypeIdInput.value = '';
+            saveFormState();
+            const query = ordertypeSearchInput.value.trim();
+            if (query.length < 2) return;
+            ordertypeSearchTimeout = setTimeout(async () => {
+                ordertypeLoadingIndicator.style.display = 'inline';
+                try {
+                    const response = await fetch(`/search-appointment-reasons/?query=${encodeURIComponent(query)}`);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const orderTypes = await response.json();
+                    displayOrderTypeSearchResults(orderTypes);
+                } catch (error) {
+                    console.error('Error searching order types:', error);
+                } finally {
+                    ordertypeLoadingIndicator.style.display = 'none';
+                }
+            }, 300);
+        });
+
+        specialtyInput.addEventListener('change', () => {
+            saveFormState();
+            sortProviderDropdown();
+        });
+
+        createReferralBtn.addEventListener('click', async () => {
+            const selectedProviderOption = providerSelect.options[providerSelect.selectedIndex];
+            const providerNpi = selectedProviderOption ? selectedProviderOption.dataset.npi : '';
+            const patientId = patientIdInput.value;
+            const orderTypeId = ordertypeIdInput.value;
+            const patientInsuranceId = patientInsuranceSelect.value;
+            const specialty = specialtyInput.value;
+            const selectedDate = selectedDateInput.value;
+            const isUrgent = document.getElementById('id_is_urgent').checked;
+            const providerNote = document.getElementById('id_provider_note').value;
+            const noteToPatient = document.getElementById('id_note_to_patient').value;
+
+            if (!patientId || !providerNpi || !orderTypeId) {
+                alert('Patient, Provider, and Referral Order Type are required.');
+                return;
+            }
+
+            createReferralBtn.disabled = true;
+            createReferralBtn.textContent = 'Creating...';
+
+            try {
+                const referralOrderPayload = {
+                    patient_id: patientId,
+                    provider_id: providerNpi,
+                    ordertypeid: orderTypeId,
+                    patientinsuranceid: patientInsuranceId,
+                    specialty: specialty,
+                    department_id: departmentSelect.value,
+                    is_urgent: isUrgent,
+                    providernote: providerNote,
+                    notetopatient: noteToPatient,
+                };
+
+                if (selectedDate) {
+                    const [year, month, day] = selectedDate.split('-');
+                    referralOrderPayload.dateofservice = `${month}/${day}/${year}`;
+                }
+                
+                console.log('Sending referral payload:', referralOrderPayload);
+
+                const response = await fetch('/create-referral-order/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                    body: JSON.stringify(referralOrderPayload),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to create referral.');
+                }
+
+                const responseData = await response.json();
+                alert('Referral created successfully!');
+                window.location.href = `/referrals/${responseData.local_referral_id}/`;
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+                console.error('Referral creation error:', error);
+                createReferralBtn.disabled = false;
+                createReferralBtn.textContent = 'Create Referral';
+            }
+        });
+
+        // Initial Load
+        loadFormState();
+        sortProviderDropdown().then(() => {
+            const storedProvider = sessionStorage.getItem(STORAGE_KEYS.PROVIDER);
+            if (storedProvider) {
+                providerSelect.value = storedProvider;
+                autoPopulateSpecialty();
+                fetchAndPopulateDepartments(storedProvider).then(() => {
+                    fetchAndRenderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+                });
+            } else {
+                fetchAndRenderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+            }
+        });
     });
-    })
-
 </script>
-
 {% endblock %}

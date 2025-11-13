@@ -23,6 +23,7 @@ urlpatterns = [
     path('create-referral-order/', views.create_referral_order_ajax, name='create_referral_order_ajax'),
     path('search-appointment-reasons/', views.search_appointment_reasons_ajax, name='search_appointment_reasons_ajax'),
     path('patient-search/', views.patient_search_ajax, name='patient_search_ajax'),
+    path('patient-insurances/<str:patient_id>/', views.get_patient_insurances_ajax, name='get_patient_insurances_ajax'),
     path('management/', views.management, name='management'),
     path('management/stream-command/', views.stream_command_view, name='stream_command_view'),
     path('management/sync-stream/', views.sync_stream_view, name='sync_stream_view'),

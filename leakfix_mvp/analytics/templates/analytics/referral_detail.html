@@ -3,7 +3,13 @@
 <h2>Referral Detail</h2>
 <p><strong>Patient:</strong> {{ referral.patient }}</p>
 <p><strong>Provider:</strong> {{ referral.provider.full_name }}</p>
-<p><strong>Payer:</strong> {{ referral.payer.name if referral.payer else 'N/A' }}</p>
+<p><strong>Payer:</strong> 
+    {% if referral.payer %}
+        {{ referral.payer.name }}
+    {% else %}
+        N/A
+    {% endif %}
+</p>
 <p><strong>Status:</strong> {{ referral.get_status_display }}</p>
 <p><strong>In‑network:</strong> {{ referral.in_network }}</p>
 <p><strong>Cost Value:</strong> ${{ referral.cost_value|floatformat:2 }}</p>
