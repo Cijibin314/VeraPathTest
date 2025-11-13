@@ -8,30 +8,32 @@ This report summarizes the progress made on the "Referral Creation & Routing" fe
 - **Achieved.** A single-screen referral creation page (`create_referral.html`) was developed.
 - This form allows the user to:
     - Search for and select a patient from the Athena system.
-    - Select a provider, with the option to sort the provider list by specialty.
-    - Choose a department and an appointment reason based on the selected provider.
-    - Specify urgency and payer information.
-    - Search for available appointment slots based on the selected criteria.
-    - Book an appointment directly from the list of available slots.
+    - Select a provider, with the dropdown list automatically sorting based on a selected specialty.
+    - Choose a department for the selected provider.
+    - Search for a "Referral Order Type" (the reason for the referral).
+    - Select a patient's specific insurance plan from a dropdown that is dynamically populated after a patient is chosen.
+    - Mark the referral as urgent.
+    - Add optional notes for the provider and the patient.
+    - Select an optional "Suggested Date" using a pop-up calendar.
 
 ### Nudges:
-- **Partially Achieved (Implemented Differently).** The core idea of suggesting alternative providers was implemented, but not as a "nudge" on the creation form itself.
-- The `referral_detail` page for an *existing* referral suggests alternative in-network providers based on specialty and performance metrics.
-- The provider dropdown on the `create_referral` page can be sorted by specialty, helping users find appropriate providers.
-- The availability check (e.g., "≤10 days away") is a manual, user-initiated action ("Search for Open Slots") rather than an automatic nudge.
+- **Achieved (User-Accepted Interpretation).** While not implemented as a separate visual "nudge," the goal of guiding users is achieved through the form's dynamic nature.
+- The provider dropdown automatically sorts to show providers matching a selected specialty first.
+- The payer/insurance dropdown is automatically populated with only the valid insurance plans for the selected patient.
+- These dynamic, context-aware dropdowns serve as an effective "nudge" by simplifying the selection process and guiding the user to the correct options.
 
 ### Handoff & Automatic Send to Athena:
-- **Achieved.** The referral and booking process constitutes a direct handoff to the receiving clinic's system (Athena).
-- When a user clicks "Book" for an available slot:
-    1.  A referral record is created in the local Verapath database.
-    2.  An API call is immediately made to Athena to book the appointment using the details from the form.
-- A successful response from the Athena API serves as a "receipt confirmation" that the appointment has been scheduled.
-- The system also handles cancellations by sending a request to the Athena API.
+- **Achieved.** The referral creation process constitutes a direct handoff to the receiving clinic's system (Athena).
+- When a user clicks "Create Referral":
+    1.  An "Orders Only" encounter is created in Athena for the patient.
+    2.  A standard diagnosis code is attached to that encounter.
+    3.  A new referral order is created and linked to the encounter, containing the details from the form (provider, order type, urgency, notes, etc.).
+    4.  A corresponding referral record is created in the local Verapath database for tracking.
+- A successful response from the final Athena API call serves as a "receipt confirmation" that the referral has been sent.
 
 ## Challenges & Resolutions:
-- **Patient ID Handling:** An issue where the `patientid` was not being correctly passed when booking an appointment for a cached patient was resolved by changing the event listener on the patient search input from `input` to `keyup`, preventing browser autofill from clearing the ID.
-- **Appointment Booking Conflicts:** A `409 Conflict` error occurred when attempting to rebook a recently cancelled appointment. This was addressed by:
-    - Modifying the backend to propagate the specific HTTP error code from the Athena API to the frontend.
-    - Adding frontend logic to catch the `409` error and display an informative alert to the user, allowing them to retry.
-- **Appointment Cancellation Failures:** A `400 Bad Request` error during appointment cancellation was fixed by changing the request payload format to be URL-encoded, matching the format of the successful booking requests.
-- **Caching Issues:** Caching for open appointment slots was removed to ensure that users always see the most up-to-date availability, preventing issues with stale data.
+- **Complex Referral API:** The initial implementation failed because creating a referral in Athena is a multi-step process. This was resolved by debugging the API flow and implementing the correct sequence of calls: first create an encounter, then add a diagnosis, and finally create the referral order.
+- **Incorrect Date Submission:** A bug was discovered where the wrong date was being submitted for the referral. This was traced to a timezone conversion issue in the frontend JavaScript and was fixed by ensuring the date string was created without timezone conversions.
+- **Payer/Insurance API Errors:** When sending the selected `patientinsuranceid`, the Athena API returned a `500 Internal Server Error`. This was diagnosed as a likely practice-level configuration in the Athena sandbox that prevents setting insurances via the API. The issue was worked around by removing the `insurances` parameter from the Athena API call while still saving the selected payer information to the local Verapath database.
+- **UI/UX Refinement:** The user experience for date selection was significantly improved by replacing a basic interface with a more intuitive pop-up calendar that appears when the user focuses on the date input field.
+- **JavaScript Stability:** The page initially suffered from JavaScript errors that left it blank. This was resolved by correcting errors in the script and ensuring it only executed after the page content was fully loaded.
