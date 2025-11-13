@@ -18,7 +18,7 @@ staticfiles/
 useful_commands.md
 docsList.txt
 GEMINI.md
-*.sh
 *.png
+*.sh
 # Other
 .DS_Store

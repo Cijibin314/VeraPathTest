@@ -23,8 +23,10 @@ env = environ.Env(
     DEBUG=(bool, False),
     SECRET_KEY=(str, 'change-me'),
     DATABASE_URL=(str, f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
+    ATHENA_CLIENT_ID=(str, ''),
+    ATHENA_CLIENT_SECRET=(str, ''),
 )
-environ.Env.read_env(BASE_DIR / '.env')
+environ.Env.read_env(str(BASE_DIR.parent / '.env'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
@@ -122,3 +124,6 @@ CACHES = {
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
+
+ATHENA_CLIENT_ID = env('ATHENA_CLIENT_ID')
+ATHENA_CLIENT_SECRET = env('ATHENA_CLIENT_SECRET')

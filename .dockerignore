@@ -1,0 +1,24 @@
+# Git
+.git
+.gitignore
+
+# Docker
+.dockerignore
+Dockerfile
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# Database
+db.sqlite3
+*.sqlite3
+
+# Gemini
+.gemini/
+GEMINI.md
