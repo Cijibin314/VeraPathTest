@@ -19,6 +19,7 @@ useful_commands.md
 docsList.txt
 GEMINI.md
 *.png
-*.sh
+repopulateData.sh
+cleanDatabase.sh
 # Other
 .DS_Store
