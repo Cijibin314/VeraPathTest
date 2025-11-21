@@ -18,31 +18,31 @@
   </div>
 
   <!-- Clickable metrics with explanations -->
-  <a href="{% url 'metric_detail' 'in_network_rate' %}" class="tile tile-link">
+  <a href="{% url 'analytics:metric_detail' 'in_network_rate' %}" class="tile tile-link">
     <strong>In‑network rate</strong>
     <small>The % of referrals to in‑network providers</small>
     <div>{{ in_network_rate|floatformat:2 }}%</div>
   </a>
 
-  <a href="{% url 'metric_detail' 'completion_rate' %}" class="tile tile-link">
+  <a href="{% url 'analytics:metric_detail' 'completion_rate' %}" class="tile tile-link">
     <strong>Completion rate</strong>
     <small>The % of referrals that reach Completed status</small>
     <div>{{ completion_rate|floatformat:2 }}%</div>
   </a>
 
-  <a href="{% url 'metric_detail' 'leakage_cost' %}" class="tile tile-link">
+  <a href="{% url 'analytics:metric_detail' 'leakage_cost' %}" class="tile tile-link">
     <strong>Estimated leakage cost</strong>
     <small>Revenue lost due to out‑of‑network referrals</small>
     <div>${{ leakage_cost|floatformat:2 }}</div>
   </a>
 
-  <a href="{% url 'metric_detail' 'retained_revenue' %}" class="tile tile-link">
+  <a href="{% url 'analytics:metric_detail' 'retained_revenue' %}" class="tile tile-link">
     <strong>Estimated dollars retained</strong>
     <small>Revenue kept by referring in‑network</small>
     <div>${{ retained_revenue|floatformat:2 }}</div>
   </a>
 
-  <a href="{% url 'metric_detail' 'avg_leakage_cost' %}" class="tile tile-link">
+  <a href="{% url 'analytics:metric_detail' 'avg_leakage_cost' %}" class="tile tile-link">
     <strong>Average leakage cost</strong>
     <small>Average cost per out‑of‑network referral</small>
     <div>${{ avg_leakage_cost|floatformat:2 }}</div>
@@ -101,5 +101,5 @@
   </tbody>
 </table>
 
-<p><a href="{% url 'specialty_dashboard' %}">View metrics by specialty</a></p>
+<p><a href="{% url 'analytics:specialty_dashboard' %}">View metrics by specialty</a></p>
 {% endblock %}

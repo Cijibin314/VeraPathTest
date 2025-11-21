@@ -26,7 +26,7 @@ env = environ.Env(
     ATHENA_CLIENT_ID=(str, ''),
     ATHENA_CLIENT_SECRET=(str, ''),
 )
-environ.Env.read_env(str(BASE_DIR.parent / '.env'))
+environ.Env.read_env(str(BASE_DIR / '.env'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
@@ -122,7 +122,7 @@ CACHES = {
 
 # Login configuration: redirect users to the login page and then to the dashboard
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/dashboard/'
+LOGIN_REDIRECT_URL = '/analytics/dashboard/'
 LOGOUT_REDIRECT_URL = '/login/'
 
 ATHENA_CLIENT_ID = env('ATHENA_CLIENT_ID')

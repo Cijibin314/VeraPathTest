@@ -55,7 +55,7 @@
   const searchInput = document.querySelector('input[name="q"]'); // Get the search input element
 
   async function searchProviders(query) {
-    const response = await fetch(`/providers/search/?q=${query}`);
+    const response = await fetch(`{% url 'analytics:provider_search' %}?q=${query}`);
     const providers = await response.json();
     console.log("Providers received from AJAX:", providers); // Keep this for debugging if needed
 

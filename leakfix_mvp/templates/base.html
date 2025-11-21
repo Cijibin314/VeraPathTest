@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -136,13 +137,14 @@
     <div class="navbar-left">
         <a class="navbar-brand" href="/">VeraPath</a>
         <ul class="navbar-nav">
-          <li><a href="/dashboard/">Dashboard</a></li>
-          <li><a href="/providers/">Providers</a></li>
-          <li><a href="/referrals/new/">New Referral</a></li>
-          <li><a href="/invoices/">Invoices</a></li>
+          <li><a href="{% url 'analytics:analytics_dashboard' %}">Dashboard</a></li>
+          <li><a href="{% url 'analytics:provider_list' %}">Providers</a></li>
+          <li><a href="{% url 'analytics:referral_list' %}">Referrals</a></li>
+          <li><a href="{% url 'analytics:create_referral' %}">New Referral</a></li>
+          <li><a href="{% url 'analytics:invoice_list' %}">Invoices</a></li>
           {% if user.is_superuser %}
           <li><a href="/admin/">Admin</a></li>
-          <li><a href="{% url 'management' %}">Management</a></li>
+          <li><a href="{% url 'analytics:management' %}">Management</a></li>
           {% endif %}
         </ul>
     </div>
@@ -161,5 +163,6 @@
   <div class="container">
     {% block content %}{% endblock %}
   </div>
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

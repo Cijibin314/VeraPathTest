@@ -10,31 +10,56 @@
         N/A
     {% endif %}
 </p>
-<p><strong>Status:</strong> {{ referral.get_status_display }}</p>
+<p><strong>Status:</strong> <span id="referral-status-badge" class="badge badge-{{ referral.status|lower }}">{{ referral.get_status_display }}</span></p>
 <p><strong>In‑network:</strong> {{ referral.in_network }}</p>
 <p><strong>Cost Value:</strong> ${{ referral.cost_value|floatformat:2 }}</p>
-
-<h3>Suggested In‑network Providers</h3>
-<ul>
-  {% for item in suggested_with_metrics %}
-    <li>
-      {{ item.provider.full_name }}
-      (In‑network rate: {{ item.metrics.in_network_rate|floatformat:2 }},
-       Completion rate: {{ item.metrics.completion_rate|floatformat:2 }},
-       Avg days: {{ item.metrics.avg_days|floatformat:2 }})
-    </li>
-  {% empty %}
-    <li>No suggestions available.</li>
-  {% endfor %}
-</ul>
+<p><strong>Notes to Provider:</strong> {{ referral.provider_note|default:"N/A" }}</p>
+<p><strong>Notes to Patient:</strong> {{ referral.note_to_patient|default:"N/A" }}</p>
 
 <p>
-  <a href="{% url 'set_referral_status' referral.id 'ack' %}">Acknowledge</a> |
-  <a href="{% url 'set_referral_status' referral.id 'scheduled' %}">Schedule</a> |
-  <a href="{% url 'set_referral_status' referral.id 'completed' %}">Complete</a> |
-  <a href="{% url 'set_referral_status' referral.id 'cancelled' %}">Cancel</a>
+  {% if user.is_superuser %}
+  <a href="{% url 'analytics:set_referral_status' referral.id 'ack' %}">Acknowledge</a> |
+  <a href="{% url 'analytics:set_referral_status' referral.id 'scheduled' %}">Schedule</a> |
+  <a href="{% url 'analytics:set_referral_status' referral.id 'completed' %}">Complete</a> |
+  <a href="{% url 'analytics:set_referral_status' referral.id 'cancelled' %}">Cancel</a>
+  {% endif %}
 </p>
 
-<p><a href="{% url 'delete_referral' referral.id %}" style="color:red;">Delete referral</a></p>
+<p><a href="{% url 'analytics:delete_referral' referral.id %}" style="color:red;">Delete referral</a></p>
 
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    var statusBadge = $('#referral-status-badge');
+    var originalText = statusBadge.text();
+    var originalClass = statusBadge.attr('class');
+
+    statusBadge.text(originalText + ' (checking live status...)');
+
+    $.ajax({
+        url: "{% url 'analytics:referral_detail_api' referral.pk %}",
+        dataType: 'json',
+        success: function(data) {
+            if (data.error) {
+                console.error("API Error:", data.error);
+                statusBadge.text(originalText + ' (Live status unavailable)');
+                statusBadge.attr('class', originalClass + ' badge-secondary'); // Indicate unavailable status
+            } else if (data.status) {
+                var liveStatus = data.status.charAt(0).toUpperCase() + data.status.slice(1).toLowerCase();
+                statusBadge.text(liveStatus + ' (Live)');
+                statusBadge.attr('class', 'badge badge-' + data.status.toLowerCase()); // Update class for color
+            } else {
+                 statusBadge.text(originalText + ' (Live status unknown)');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error("AJAX Error:", status, error);
+            statusBadge.text(originalText + ' (Live status unavailable)');
+            statusBadge.attr('class', originalClass + ' badge-secondary');
+        }
+    });
+});
+</script>
 {% endblock %}

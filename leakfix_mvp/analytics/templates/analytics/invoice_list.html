@@ -8,7 +8,7 @@
   <tbody>
     {% for inv in invoices %}
       <tr>
-        <td><a href="/invoices/{{ inv.id }}/">{{ inv.period_start }} to {{ inv.period_end }}</a></td>
+        <td><a href="{% url 'analytics:invoice_detail' inv.id %}">{{ inv.period_start }} to {{ inv.period_end }}</a></td>
         <td>${{ inv.retained_revenue|floatformat:2 }}</td>
         <td>{{ inv.fee_rate|floatformat:2 }}</td>
         <td>${{ inv.amount_due|floatformat:2 }}</td>

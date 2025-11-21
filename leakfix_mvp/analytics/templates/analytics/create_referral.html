@@ -267,7 +267,7 @@
             patientInsuranceSelect.innerHTML = '<option value="">--- loading insurances ---</option>';
             patientInsuranceSelect.disabled = true;
             try {
-                const response = await fetch(`/patient-insurances/${patientId}/`);
+                const response = await fetch(`/analytics/patient-insurances/${patientId}/`);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const insurances = await response.json();
                 patientInsuranceSelect.innerHTML = '<option value="">--- select payer ---</option>';
@@ -296,7 +296,7 @@
             departmentSelect.innerHTML = '<option value="">--- loading departments ---</option>';
             departmentSelect.disabled = true;
             try {
-                const url = providerId ? `/provider-departments/${providerId}/` : '/provider-departments/';
+                const url = providerId ? `/analytics/provider-departments/${providerId}/` : '/analytics/provider-departments/';
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const departments = await response.json();
@@ -375,7 +375,7 @@
             const selectedProviderId = providerSelect.value;
             if (selectedProviderId) {
                 try {
-                    const response = await fetch(`/provider-details/${selectedProviderId}/`);
+                    const response = await fetch(`/analytics/provider-details/${selectedProviderId}/`);
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     const providerDetails = await response.json();
                     specialtyInput.value = providerDetails.specialty || '';
@@ -390,7 +390,7 @@
 
         async function sortProviderDropdown() {
             const selectedSpecialty = specialtyInput.value;
-            let url = '/sorted-providers/';
+            let url = '{% url "analytics:get_sorted_providers_ajax" %}';
             if (selectedSpecialty) {
                 url += `?specialty=${encodeURIComponent(selectedSpecialty)}`;
             }
@@ -544,7 +544,7 @@
                 params.append('startdate', `${String(startDate.getMonth() + 1).padStart(2, '0')}/${String(startDate.getDate()).padStart(2, '0')}/${startDate.getFullYear()}`);
                 params.append('enddate', `${String(endDate.getMonth() + 1).padStart(2, '0')}/${String(endDate.getDate()).padStart(2, '0')}/${endDate.getFullYear()}`);
 
-                const response = await fetch(`/find-slots/?${params.toString()}`);
+                const response = await fetch(`{% url 'analytics:find_provider_slots' %}?${params.toString()}`);
                 if (!response.ok) throw new Error('Failed to fetch slots');
                 const slots = await response.json();
 
@@ -616,7 +616,7 @@
             }
             searchTimeout = setTimeout(async () => {
                 try {
-                    const response = await fetch(`/patient-search/?query=${encodeURIComponent(query)}`);
+                    const response = await fetch(`{% url 'analytics:patient_search_ajax' %}?query=${encodeURIComponent(query)}`);
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     const patients = await response.json();
                     displayPatientSearchResults(patients);
@@ -637,7 +637,7 @@
             ordertypeSearchTimeout = setTimeout(async () => {
                 ordertypeLoadingIndicator.style.display = 'inline';
                 try {
-                    const response = await fetch(`/search-appointment-reasons/?query=${encodeURIComponent(query)}`);
+                    const response = await fetch(`{% url 'analytics:search_appointment_reasons_ajax' %}?query=${encodeURIComponent(query)}`);
                     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     const orderTypes = await response.json();
                     displayOrderTypeSearchResults(orderTypes);
@@ -694,7 +694,7 @@
                 
                 console.log('Sending referral payload:', referralOrderPayload);
 
-                const response = await fetch('/create-referral-order/', {
+                const response = await fetch('{% url "analytics:create_referral_order_ajax" %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -709,8 +709,8 @@
                 }
 
                 const responseData = await response.json();
-                alert('Referral created successfully!');
-                window.location.href = `/referrals/${responseData.local_referral_id}/`;
+                //alert('Referral created successfully!');
+                window.location.href = `/analytics/referrals/${responseData.local_referral_id}/`;
 
             } catch (error) {
                 alert(`Error: ${error.message}`);

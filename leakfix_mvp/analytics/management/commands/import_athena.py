@@ -53,7 +53,7 @@ class Command(BaseCommand):
                     "grant_type": "client_credentials",
                     "client_id": client_id,
                     "client_secret": client_secret,
-                    "scope": "system/CarePlan.read",
+                    "scope": "athena/service/Athenanet.MDP.*",
                 },
             )
             token_resp.raise_for_status()
@@ -64,7 +64,22 @@ class Command(BaseCommand):
 
         headers = {"Authorization": f"Bearer {access_token}"}
 
-        # Step 2: Fetch all providers and create them if they don't exist
+        # Step 2: Fetch appointment cancellation reasons for 'no-show' mapping
+        noshow_reason_ids = set()
+        try:
+            cancel_reasons_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/appointmentcancelreasons"
+            response = requests.get(cancel_reasons_url, headers=headers)
+            response.raise_for_status()
+            cancel_reasons_data = response.json()
+            cancel_reasons = cancel_reasons_data.get('appointmentcancelreasons', [])
+            for reason in cancel_reasons:
+                if reason.get('noshow'):
+                    noshow_reason_ids.add(str(reason.get('appointmentcancelreasonid')))
+            self.stdout.write(self.style.SUCCESS(f"Found {len(noshow_reason_ids)} 'no-show' cancellation reason IDs."))
+        except requests.RequestException as e:
+            raise CommandError(f"Failed to fetch appointment cancel reasons: {e}")
+
+        # Step 3: Fetch all providers and create them if they don't exist
         try:
             provider_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/providers"
             response = requests.get(provider_url, headers=headers)
@@ -92,7 +107,7 @@ class Command(BaseCommand):
         except requests.RequestException as e:
             raise CommandError(f"Failed to fetch providers: {e}")
 
-        # Step 3: Fetch appointments in the determined time window
+        # Step 4: Fetch appointments in the determined time window
         try:
             all_appointments = []
             dept_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/departments"
@@ -118,52 +133,94 @@ class Command(BaseCommand):
             ImportLog.objects.create(task_name=task_name, last_run_at=current_run_time, status="failed", notes=f"API Error: {e}")
             raise CommandError(f"Failed to fetch appointments: {e}")
 
-        # Step 4: Process the appointments
+        # Step 5: Process the appointments
         created_count = 0
-        for appt in all_appointments:
-            patient_id = str(appt.get("patientid"))
-            if not patient_id: continue
+        updated_count = 0
+        for appt_summary in all_appointments:
+            appointment_id = str(appt_summary.get("appointmentid"))
+            if not appointment_id:
+                continue
 
-            patient, _ = Patient.objects.get_or_create(
-                original_id=patient_id,
-                defaults={"pseudonym": hashlib.sha256(patient_id.encode()).hexdigest()},
-            )
+            try:
+                # Get detailed appointment data
+                appt_detail_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/appointments/{appointment_id}"
+                response = requests.get(appt_detail_url, headers=headers)
+                response.raise_for_status()
+                appt = response.json()[0]
 
-            provider_id = str(appt.get("providerid") or "")
-            if not provider_id: continue
+                patient_id = str(appt.get("patientid"))
+                provider_id = str(appt.get("providerid"))
 
-            provider, _ = Provider.objects.get_or_create(
-                npi=provider_id, defaults={"full_name": f"Provider {provider_id}"}
-            )
+                if not patient_id or not provider_id:
+                    continue
 
-            ref_date_str = appt.get("date")
-            if ref_date_str:
-                try:
+                # Get patient details to store their name
+                patient_details_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/patients/{patient_id}"
+                response = requests.get(patient_details_url, headers=headers)
+                response.raise_for_status()
+                patient_data = response.json()[0]
+                self.stdout.write(f"  -> Patient data from API: {patient_data}")
+
+                patient, created = Patient.objects.get_or_create(
+                    original_id=patient_id,
+                )
+                if created:
+                    patient.save() # Ensure pseudonym is created
+
+                patient.first_name = patient_data.get("firstname")
+                patient.last_name = patient_data.get("lastname")
+                patient.save()
+
+                provider, _ = Provider.objects.get_or_create(
+                    npi=provider_id, defaults={"full_name": f"Provider {provider_id}"}
+                )
+
+                ref_date_str = appt.get("date")
+                if ref_date_str:
                     ref_date = datetime.strptime(ref_date_str, "%m/%d/%Y").date()
-                except ValueError:
-                    self.stdout.write(self.style.WARNING(f"\n  -> Invalid date format '{ref_date_str}'. Using current date."))
+                else:
                     ref_date = timezone.now().date()
-            else:
-                self.stdout.write(self.style.WARNING(f"\n  -> No creation date from API. Using current date."))
-                ref_date = timezone.now().date()
 
-            _, created = Referral.objects.update_or_create(
-                patient=patient, provider=provider, referral_date=ref_date,
-                defaults={
-                    "status": Referral.Status.PENDING
-                }
-            )
-            self.stdout.write(f"[ATHENA_LOG] Processed Referral: PatientID={patient.original_id}, ProviderID={provider_id}, ReferralDate={ref_date}, Created={created}")
-            if created:
-                created_count += 1
+                # Determine Status
+                status = Referral.Status.SCHEDULED  # Default for a booked appointment
+                if appt.get('replacementappointmentid'):
+                    status = Referral.Status.RESCHEDULED
+                elif appt.get('appointmentstatus') == 'x': # Cancelled
+                    cancel_reason_id = str(appt.get('appointmentcancellationreasonid'))
+                    if cancel_reason_id in noshow_reason_ids:
+                        status = Referral.Status.NO_SHOW
+                    else:
+                        status = Referral.Status.CANCELLED
+                elif appt.get('appointmentstatus') in ['2', '3', '4']: # Checked-in, Checked-out, Charge Entered
+                    status = Referral.Status.COMPLETED
 
-        # Step 5: Log the successful run
+
+                _, created = Referral.objects.update_or_create(
+                    athena_appointment_id=appointment_id,
+                    defaults={
+                        "patient": patient,
+                        "provider": provider,
+                        "referral_date": ref_date,
+                        "status": status,
+                    }
+                )
+
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+
+            except requests.RequestException as e:
+                self.stdout.write(self.style.WARNING(f"Could not process appointment {appointment_id}: {e}"))
+                continue
+
+        # Step 6: Log the successful run
         ImportLog.objects.update_or_create(
             task_name=task_name,
             defaults={
-                "last_run_at": current_run_time, 
+                "last_run_at": current_run_time,
                 "status": "success",
-                "notes": f"Imported {created_count} new referrals."
+                "notes": f"Created {created_count} and updated {updated_count} referrals."
             }
         )
-        self.stdout.write(self.style.SUCCESS(f"Import complete. Created {created_count} new referrals."))
+        self.stdout.write(self.style.SUCCESS(f"Import complete. Created {created_count} and updated {updated_count} referrals."))

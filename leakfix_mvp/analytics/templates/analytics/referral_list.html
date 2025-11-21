@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Referrals{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Referrals</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">All Referrals</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" action="{% url 'analytics:referral_list' %}" class="form-inline mb-4">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Search by Patient ID, Name, Specialty, Status..." value="{{ query|default:'' }}">
+                    <div class="input-group-append">
+                        <button class="btn btn-primary" type="submit">Search</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Patient</th>
+                            <th>Provider</th>
+                            <th>Specialty</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>In-Network</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for referral in referrals %}
+                        <tr>
+                            <td>{{ referral.patient }}</td>
+                            <td>{{ referral.provider }}</td>
+                            <td>{{ referral.specialty }}</td>
+                            <td>{{ referral.referral_date }}</td>
+                            <td>
+                                <span class="badge badge-{{ referral.status|lower }}">{{ referral.get_status_display }}</span>
+                            </td>
+                            <td>
+                                {% if referral.in_network %}
+                                    <span class="badge badge-success">Yes</span>
+                                {% else %}
+                                    <span class="badge badge-danger">No</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'analytics:referral_detail' referral.pk %}" class="btn btn-sm btn-info">Details</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No referrals found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

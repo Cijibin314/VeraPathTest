@@ -1,12 +1,16 @@
 from django.urls import path
 from . import views
 
+app_name = 'analytics'
 urlpatterns = [
     path('dashboard/', views.dashboard, name='analytics_dashboard'),
     path('specialties/', views.specialty_dashboard, name='specialty_dashboard'),
     path('providers/', views.provider_list, name='provider_list'),
     path('providers/search/', views.provider_search, name='provider_search'),
+    path('referrals/', views.referral_list, name='referral_list'),
     path('referrals/new/', views.create_referral, name='create_referral'),
+    # This URL must come BEFORE the general referral_detail URL
+    path('referrals/<int:pk>/api/', views.referral_detail_api, name='referral_detail_api'),
     path('referrals/<int:pk>/', views.referral_detail, name='referral_detail'),
     path('referrals/<int:pk>/status/<str:state>/', views.set_referral_status, name='set_referral_status'),
     path('referrals/<int:pk>/delete/', views.delete_referral, name='delete_referral'),
