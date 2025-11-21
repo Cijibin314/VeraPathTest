@@ -16,6 +16,29 @@
 <p><strong>Notes to Provider:</strong> {{ referral.provider_note|default:"N/A" }}</p>
 <p><strong>Notes to Patient:</strong> {{ referral.note_to_patient|default:"N/A" }}</p>
 
+<div id="athena-details-container" class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Live Athena Order Details (Summary)</h6>
+    </div>
+    <div class="card-body" id="athena-details-body">
+        <p>Loading details from Athena...</p>
+    </div>
+</div>
+
+<h3>Suggested In‑network Providers</h3>
+<ul>
+  {% for item in suggested_with_metrics %}
+    <li>
+      {{ item.provider.full_name }}
+      (In‑network rate: {{ item.metrics.in_network_rate|floatformat:2 }},
+       Completion rate: {{ item.metrics.completion_rate|floatformat:2 }},
+       Avg days: {{ item.metrics.avg_days|floatformat:2 }})
+    </li>
+  {% empty %}
+    <li>No suggestions available.</li>
+  {% endfor %}
+</ul>
+
 <p>
   {% if user.is_superuser %}
   <a href="{% url 'analytics:set_referral_status' referral.id 'ack' %}">Acknowledge</a> |
@@ -35,6 +58,7 @@ $(document).ready(function() {
     var statusBadge = $('#referral-status-badge');
     var originalText = statusBadge.text();
     var originalClass = statusBadge.attr('class');
+    var athenaDetailsBody = $('#athena-details-body');
 
     statusBadge.text(originalText + ' (checking live status...)');
 
@@ -42,22 +66,46 @@ $(document).ready(function() {
         url: "{% url 'analytics:referral_detail_api' referral.pk %}",
         dataType: 'json',
         success: function(data) {
+            athenaDetailsBody.empty(); // Clear "Loading..." message
             if (data.error) {
                 console.error("API Error:", data.error);
                 statusBadge.text(originalText + ' (Live status unavailable)');
-                statusBadge.attr('class', originalClass + ' badge-secondary'); // Indicate unavailable status
-            } else if (data.status) {
-                var liveStatus = data.status.charAt(0).toUpperCase() + data.status.slice(1).toLowerCase();
-                statusBadge.text(liveStatus + ' (Live)');
-                statusBadge.attr('class', 'badge badge-' + data.status.toLowerCase()); // Update class for color
+                statusBadge.attr('class', originalClass + ' badge-secondary');
+                athenaDetailsBody.append('<p class="text-danger">' + data.error + '</p>');
             } else {
-                 statusBadge.text(originalText + ' (Live status unknown)');
+                if (data.status) {
+                    var liveStatus = data.status.charAt(0).toUpperCase() + data.status.slice(1).toLowerCase();
+                    statusBadge.text(liveStatus + ' (Live)');
+                    statusBadge.attr('class', 'badge badge-' + data.status.toLowerCase());
+                } else {
+                    statusBadge.text(originalText + ' (Live status unknown)');
+                }
+                
+                // Display more details
+                athenaDetailsBody.append('<h6>Order Summary:</h6>');
+                athenaDetailsBody.append('<p><strong>Order Type:</strong> ' + (data.ordertype || 'N/A') + '</p>');
+                athenaDetailsBody.append('<p><strong>Description:</strong> ' + (data.description || 'N/A') + '</p>');
+                athenaDetailsBody.append('<p><strong>Order ID:</strong> ' + (data.orderid || 'N/A') + '</p>');
+                athenaDetailsBody.append('<p><strong>Order Type ID:</strong> ' + (data.ordertypeid || 'N/A') + '</p>');
+                if (data.diagnosislist && data.diagnosislist.length > 0) {
+                    var diagnoses = [];
+                    $.each(data.diagnosislist, function(index, diag) {
+                        if (diag.diagnosiscode && diag.diagnosiscode.description) {
+                            diagnoses.push(diag.diagnosiscode.description + ' (' + diag.diagnosiscode.code + ')');
+                        }
+                    });
+                    if (diagnoses.length > 0) {
+                        athenaDetailsBody.append('<p><strong>Diagnoses:</strong> ' + diagnoses.join(', ') + '</p>');
+                    }
+                }
             }
         },
         error: function(xhr, status, error) {
             console.error("AJAX Error:", status, error);
             statusBadge.text(originalText + ' (Live status unavailable)');
             statusBadge.attr('class', originalClass + ' badge-secondary');
+            athenaDetailsBody.empty();
+            athenaDetailsBody.append('<p class="text-danger">An error occurred while fetching details from Athena. The summary may not be available.</p>');
         }
     });
 });

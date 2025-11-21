@@ -1901,14 +1901,19 @@ def get_referral_details_ajax(request, pk):
         
         try:
             order_details = get(request_url, practice_id, token)
-            logging.info(f"Received successful response from Athena API: {order_details}")
+            logging.info(f"Received raw response from Athena API: {order_details}")
             
             if order_details and isinstance(order_details, list):
-                return JsonResponse(order_details[0])
+                # If the endpoint returns a list (even if it's a single item list)
+                if order_details[0]: # Check if the list is not empty
+                    logging.info(f"Returning JSON for order: {JsonResponse(order_details[0]).content.decode("utf-8")}")
+                    return JsonResponse(order_details[0])
+                else:
+                    return JsonResponse({'error': f'Empty response from Athena for Order ID {order_id}.'}, status=404)
             elif order_details:
+                # If the endpoint returns a single dictionary directly
+                logging.info(f"Returning JSON for order: {JsonResponse(order_details).content.decode("utf-8")}")
                 return JsonResponse(order_details)
-            else:
-                return JsonResponse({'error': f'No details found for Order ID {order_id} in encounter {encounter_id}.'}, status=404)
         except requests.exceptions.HTTPError as http_err:
             logging.error(f"Athena API HTTP Error ({http_err.response.status_code}): {http_err.response.text}", exc_info=True)
             return JsonResponse({'error': f"Athena API returned an error: {http_err.response.text}"}, status=http_err.response.status_code)
