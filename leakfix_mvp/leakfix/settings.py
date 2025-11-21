@@ -114,11 +114,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Caching configuration
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache_table', # Unique name for the cache table
         'TIMEOUT': 300, # Cache for 5 minutes (300 seconds)
     }
 }
+
+# Use cached database sessions for better concurrency handling
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
 
 # Login configuration: redirect users to the login page and then to the dashboard
 LOGIN_URL = '/login/'
