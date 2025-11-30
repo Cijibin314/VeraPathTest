@@ -33,24 +33,15 @@ def dashboard(request):
         user_practice = request.user.userprofile.practice
         if user_practice:
             debug_message = f"Filtering referrals for practice: '{user_practice.name}' (Athena ID: {user_practice.athena_practice_id}). "
-            
-            total_referrals_in_db = Referral.objects.count()
-            providers_in_practice = Provider.objects.filter(practice=user_practice).count()
-            referrals_for_practice = Referral.objects.filter(provider__practice=user_practice)
-            
-            debug_message += f"Found {total_referrals_in_db} total referrals in DB. "
-            debug_message += f"Found {providers_in_practice} providers in this practice. "
-            debug_message += f"The dashboard query for this practice found {referrals_for_practice.count()} referrals."
-
-            referrals = referrals_for_practice
+            base_referrals = Referral.objects.filter(Q(provider__practice=user_practice) | Q(provider__isnull=True))
         else:
-            user_practice = None # Ensure it's None if no practice is found
+            user_practice = None
             debug_message = "User is not associated with a practice. Showing all referrals."
-            referrals = Referral.objects.all()
+            base_referrals = Referral.objects.all()
     except (UserProfile.DoesNotExist, AttributeError):
         user_practice = None
         debug_message = "User has no UserProfile or it's incomplete. Showing all referrals."
-        referrals = Referral.objects.all()
+        base_referrals = Referral.objects.all()
 
     # --- Quarter Filtering Logic ---
     selected_quarters = request.GET.getlist('quarter')
@@ -69,71 +60,29 @@ def dashboard(request):
             elif q == '4': # Q4: Oct 1 - Dec 31
                 q_filters |= Q(referral_date__gte=datetime(current_year, 10, 1), referral_date__lte=datetime(current_year, 12, 31))
         
-        referrals = referrals.filter(q_filters)
+        referrals_in_period = base_referrals.filter(q_filters)
+    else:
+        referrals_in_period = base_referrals
     # --- End Quarter Filtering Logic ---
+
+    referrals_with_provider_in_period = referrals_in_period.filter(provider__isnull=False)
     
-    total = referrals.count()
-    in_network = referrals.filter(in_network=True).count()
-    out_network = referrals.filter(in_network=False).count()
-    leakage_cost = (
-        referrals.filter(in_network=False).aggregate(total_leak=Sum('cost_value')).get('total_leak')
-        or 0
-    )
-    # New: average leakage cost across all referrals
-    avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
-
-    durations_completion = [
-        (ref.completed_at.date() - ref.referral_date).days
-        for ref in referrals.filter(completed_at__isnull=False)
-    ]
-    median_days_completion = median(durations_completion) if durations_completion else 0
-
-    durations_ack = [
-        (ref.ack_at.date() - ref.referral_date).days
-        for ref in referrals.filter(ack_at__isnull=False)
-    ]
-    median_days_ack = median(durations_ack) if durations_ack else 0
-
+    total = referrals_in_period.count()
+    in_network = referrals_with_provider_in_period.filter(in_network=True).count()
+    out_network = referrals_with_provider_in_period.filter(in_network=False).count()
     durations_sched = [
         (ref.scheduled_at.date() - ref.referral_date).days
-        for ref in referrals.filter(scheduled_at__isnull=False)
+        for ref in referrals_in_period.filter(scheduled_at__isnull=False)
     ]
-    median_days_schedule = median(durations_sched) if durations_sched else 0
 
-    attempts = [ref.history.count() for ref in referrals.filter(scheduled_at__isnull=False)]
-    avg_attempts = (sum(attempts) / len(attempts)) if attempts else 0
-
-    in_network_rate = (in_network / total * 100.0) if total else 0
-    out_network_rate = (out_network / total * 100.0) if total else 0
-    completed = referrals.filter(status=Referral.Status.COMPLETED).count()
+    total_with_provider = referrals_with_provider_in_period.count()
+    in_network_rate = (in_network / total_with_provider * 100.0) if total_with_provider else 0
+    out_network_rate = (out_network / total_with_provider * 100.0) if total_with_provider else 0
+    
+    completed = referrals_in_period.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
     completion_rate = (completed / total * 100.0) if total else 0
 
-    # Calculate average days to schedule (avg_days_to_specialist)
     avg_days_to_specialist = (sum(durations_sched) / len(durations_sched)) if durations_sched else 0
-
-    attempts = [ref.history.count() for ref in referrals.filter(scheduled_at__isnull=False)]
-    avg_attempts = (sum(attempts) / len(attempts)) if attempts else 0
-
-    in_network_rate = (in_network / total * 100.0) if total else 0
-    completed = referrals.filter(status=Referral.Status.COMPLETED).count()
-    completion_rate = (completed / total * 100.0) if total else 0
-
-    top_leakage = (
-        referrals.filter(in_network=False)
-        .values('provider__full_name')
-        .annotate(total_leak=Sum('cost_value'))
-        .order_by('-total_leak')[:5]
-    )
-
-    top_payer_leakage = (
-        referrals.filter(in_network=False, payer__isnull=False)
-        .values('payer__name')
-        .annotate(total_leak=Sum('cost_value'))
-        .order_by('-total_leak')[:5]
-    )
-
-    avg_in_cost = referrals.filter(in_network=True).aggregate(avg=Avg('cost_value'))['avg'] or 0
-    retained_revenue = in_network * avg_in_cost
 
     context = {
         'total': total,
@@ -142,17 +91,9 @@ def dashboard(request):
         'in_network_rate': in_network_rate,
         'out_network_rate': out_network_rate,
         'completion_rate': completion_rate,
-        'leakage_cost': leakage_cost,
-        'avg_leakage_cost': avg_leakage_cost,
-        'retained_revenue': retained_revenue,
-        'median_days_completion': median_days_completion,
-        'median_days_ack': median_days_ack,
         'avg_days_to_specialist': avg_days_to_specialist,
-        'avg_attempts': avg_attempts,
-        'top_leakage': list(top_leakage),
-        'top_payer_leakage': list(top_payer_leakage),
         'debug_message': debug_message,
-        'selected_quarters': selected_quarters, # Add this line
+        'selected_quarters': selected_quarters,
     }
     return render(request, 'analytics/dashboard.html', context)
 
@@ -271,7 +212,7 @@ def get_provider_metrics():
         if total == 0:
             continue
         in_net = refs.filter(in_network=True).count()
-        completed = refs.filter(status=Referral.Status.COMPLETED).count()
+        completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
         durations = [
             (r.completed_at - r.created_at).days
             for r in refs.filter(completed_at__isnull=False)
@@ -477,9 +418,13 @@ def metric_detail(request, metric):
             total = month_refs.count()
             in_net = month_refs.filter(in_network=True).count()
             value = (in_net / total * 100.0) if total else 0
+        elif metric == 'out_of_network_rate':
+            total = month_refs.count()
+            out_net = month_refs.filter(in_network=False).count()
+            value = (out_net / total * 100.0) if total else 0
         elif metric == 'completion_rate':
             total = month_refs.count()
-            completed = month_refs.filter(status=Referral.Status.COMPLETED).count()
+            completed = month_refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
             value = (completed / total * 100.0) if total else 0
         elif metric == 'leakage_cost':
             value = month_refs.filter(in_network=False).aggregate(total_leak=Sum('cost_value')).get('total_leak') or 0
@@ -542,8 +487,12 @@ def specialty_dashboard(request):
     for spec in specialties:
         refs = Referral.objects.filter(provider__specialty=spec)
         total = refs.count()
-        in_network = refs.filter(in_network=True).count()
-        out_network = refs.filter(in_network=False).count()
+        if spec is None:
+            in_network = 0
+            out_network = 0
+        else:
+            in_network = refs.filter(in_network=True).count()
+            out_network = refs.filter(in_network=False).count()
         leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('cost_value')).get('total_leak') or 0
         avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
         avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('cost_value'))['avg'] or 0
@@ -566,7 +515,7 @@ def specialty_dashboard(request):
         attempts = [ref.history.count() for ref in refs.filter(scheduled_at__isnull=False)]
         avg_attempts = (sum(attempts) / len(attempts)) if attempts else 0
         in_network_rate = (in_network / total * 100.0) if total else 0
-        completed = refs.filter(status=Referral.Status.COMPLETED).count()
+        completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
         completion_rate = (completed / total * 100.0) if total else 0
         specialty_data.append({
             'specialty': spec,
@@ -592,8 +541,12 @@ def specialty_detail(request, specialty):
     """
     refs = Referral.objects.filter(provider__specialty=specialty)
     total = refs.count()
-    in_network = refs.filter(in_network=True).count()
-    out_network = refs.filter(in_network=False).count()
+    if specialty == 'None':
+        in_network = 0
+        out_network = 0
+    else:
+        in_network = refs.filter(in_network=True).count()
+        out_network = refs.filter(in_network=False).count()
     leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('cost_value')).get('total_leak') or 0
     avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
     avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('cost_value'))['avg'] or 0
@@ -616,7 +569,7 @@ def specialty_detail(request, specialty):
     attempts = [ref.history.count() for ref in refs.filter(scheduled_at__isnull=False)]
     avg_attempts = (sum(attempts) / len(attempts)) if attempts else 0
     in_network_rate = (in_network / total * 100.0) if total else 0
-    completed = refs.filter(status=Referral.Status.COMPLETED).count()
+    completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
     completion_rate = (completed / total * 100.0) if total else 0
 
     context = {

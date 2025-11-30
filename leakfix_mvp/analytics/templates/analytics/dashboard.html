@@ -71,10 +71,11 @@
     <div>{{ in_network_rate|floatformat:2 }}%</div>
   </a>
 
-  <div class="tile">
+  <a href="{% url 'analytics:metric_detail' 'out_of_network_rate' %}" class="tile tile-link">
     <strong>Out‑of‑network rate</strong>
+    <small>The % of referrals to out-of-network providers</small>
     <div>{{ out_network_rate|floatformat:2 }}%</div>
-  </div>
+  </a>
 
   <a href="{% url 'analytics:metric_detail' 'completion_rate' %}" class="tile tile-link">
     <strong>Completion rate</strong>
@@ -82,76 +83,11 @@
     <div>{{ completion_rate|floatformat:2 }}%</div>
   </a>
 
-  <a href="{% url 'analytics:metric_detail' 'leakage_cost' %}" class="tile tile-link">
-    <strong>Estimated leakage cost</strong>
-    <small>Revenue lost due to out‑of‑network referrals</small>
-    <div>${{ leakage_cost|floatformat:2 }}</div>
-  </a>
-
-  <a href="{% url 'analytics:metric_detail' 'retained_revenue' %}" class="tile tile-link">
-    <strong>Estimated dollars retained</strong>
-    <small>Revenue kept by referring in‑network</small>
-    <div>${{ retained_revenue|floatformat:2 }}</div>
-  </a>
-
-  <a href="{% url 'analytics:metric_detail' 'avg_leakage_cost' %}" class="tile tile-link">
-    <strong>Average leakage cost</strong>
-    <small>Average cost per out‑of‑network referral</small>
-    <div>${{ avg_leakage_cost|floatformat:2 }}</div>
-  </a>
-
-  <!-- Non-clickable metrics -->
-  <div class="tile">
-    <strong>Median days to completion</strong>
-    <div>{{ median_days_completion|floatformat:2 }} days</div>
-  </div>
-  <div class="tile">
-    <strong>Median days to acknowledgement</strong>
-    <div>{{ median_days_ack|floatformat:2 }} days</div>
-  </div>
   <div class="tile">
     <strong>Avg days to specialist</strong>
     <div>{{ avg_days_to_specialist|floatformat:2 }} days</div>
   </div>
-  <div class="tile">
-    <strong>Average attempts per scheduled referral</strong>
-    <div>{{ avg_attempts|floatformat:2 }} attempts</div>
-  </div>
 </div>
-
-<h3>Top Leakage Sources (Providers)</h3>
-<table>
-  <thead>
-    <tr><th>Provider</th><th>Total Leakage ($)</th></tr>
-  </thead>
-  <tbody>
-    {% for item in top_leakage %}
-    <tr>
-      <td>{{ item.provider__full_name }}</td>
-      <td>${{ item.total_leak|floatformat:2 }}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="2">No leakage data available.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
-
-<h3>Top Leakage Sources (Payers)</h3>
-<table>
-  <thead>
-    <tr><th>Payer</th><th>Total Leakage ($)</th></tr>
-  </thead>
-  <tbody>
-    {% for item in top_payer_leakage %}
-    <tr>
-      <td>{{ item.payer__name }}</td>
-      <td>${{ item.total_leak|floatformat:2 }}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="2">No leakage data available.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
 
 <p><a href="{% url 'analytics:specialty_dashboard' %}">View metrics by specialty</a></p>
 {% endblock %}

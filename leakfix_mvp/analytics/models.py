@@ -91,6 +91,7 @@ class Referral(models.Model):
         RESCHEDULED = 'rescheduled', 'Rescheduled'
         CANCELLED = 'cancelled', 'Cancelled'
         REVIEW = 'review', 'Review'
+        CLOSED = 'closed', 'Closed'
 
     patient = models.ForeignKey(Patient, on_delete=models.PROTECT)
     provider = models.ForeignKey(Provider, on_delete=models.SET_NULL, null=True)
