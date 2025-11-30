@@ -1,3 +1,4 @@
+import requests
 import difflib
 from urllib.parse import urlencode
 import time
@@ -9,6 +10,7 @@ from django.db.models.functions import Concat
 from django.utils import timezone
 from statistics import median
 from datetime import timedelta
+from decimal import Decimal
 from .models import (
     Referral,
     Provider,
@@ -50,6 +52,26 @@ def dashboard(request):
         debug_message = "User has no UserProfile or it's incomplete. Showing all referrals."
         referrals = Referral.objects.all()
 
+    # --- Quarter Filtering Logic ---
+    selected_quarters = request.GET.getlist('quarter')
+    current_year = timezone.now().year
+    
+    q_filters = Q()
+    if selected_quarters:
+        debug_message += f"Filtering by quarters: {', '.join(selected_quarters)}. "
+        for q in selected_quarters:
+            if q == '1': # Q1: Jan 1 - Mar 31
+                q_filters |= Q(referral_date__gte=datetime(current_year, 1, 1), referral_date__lte=datetime(current_year, 3, 31))
+            elif q == '2': # Q2: Apr 1 - Jun 30
+                q_filters |= Q(referral_date__gte=datetime(current_year, 4, 1), referral_date__lte=datetime(current_year, 6, 30))
+            elif q == '3': # Q3: Jul 1 - Sep 30
+                q_filters |= Q(referral_date__gte=datetime(current_year, 7, 1), referral_date__lte=datetime(current_year, 9, 30))
+            elif q == '4': # Q4: Oct 1 - Dec 31
+                q_filters |= Q(referral_date__gte=datetime(current_year, 10, 1), referral_date__lte=datetime(current_year, 12, 31))
+        
+        referrals = referrals.filter(q_filters)
+    # --- End Quarter Filtering Logic ---
+    
     total = referrals.count()
     in_network = referrals.filter(in_network=True).count()
     out_network = referrals.filter(in_network=False).count()
@@ -82,6 +104,17 @@ def dashboard(request):
     avg_attempts = (sum(attempts) / len(attempts)) if attempts else 0
 
     in_network_rate = (in_network / total * 100.0) if total else 0
+    out_network_rate = (out_network / total * 100.0) if total else 0
+    completed = referrals.filter(status=Referral.Status.COMPLETED).count()
+    completion_rate = (completed / total * 100.0) if total else 0
+
+    # Calculate average days to schedule (avg_days_to_specialist)
+    avg_days_to_specialist = (sum(durations_sched) / len(durations_sched)) if durations_sched else 0
+
+    attempts = [ref.history.count() for ref in referrals.filter(scheduled_at__isnull=False)]
+    avg_attempts = (sum(attempts) / len(attempts)) if attempts else 0
+
+    in_network_rate = (in_network / total * 100.0) if total else 0
     completed = referrals.filter(status=Referral.Status.COMPLETED).count()
     completion_rate = (completed / total * 100.0) if total else 0
 
@@ -107,17 +140,19 @@ def dashboard(request):
         'in_network': in_network,
         'out_network': out_network,
         'in_network_rate': in_network_rate,
+        'out_network_rate': out_network_rate,
         'completion_rate': completion_rate,
         'leakage_cost': leakage_cost,
         'avg_leakage_cost': avg_leakage_cost,
         'retained_revenue': retained_revenue,
         'median_days_completion': median_days_completion,
         'median_days_ack': median_days_ack,
-        'median_days_schedule': median_days_schedule,
+        'avg_days_to_specialist': avg_days_to_specialist,
         'avg_attempts': avg_attempts,
         'top_leakage': list(top_leakage),
         'top_payer_leakage': list(top_payer_leakage),
         'debug_message': debug_message,
+        'selected_quarters': selected_quarters, # Add this line
     }
     return render(request, 'analytics/dashboard.html', context)
 
@@ -126,6 +161,7 @@ import json
 import os
 from django.conf import settings
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
 from django.db.models.functions import Coalesce
 
@@ -250,6 +286,9 @@ def get_provider_metrics():
 
 
 def get_suggested_providers(referral, max_results=3):
+    if not referral.provider:
+        return [] # Return an empty list if the referral has no provider
+
     candidates = Provider.objects.filter(
         specialty__iexact=referral.provider.specialty
     ).exclude(id=referral.provider.id)
@@ -315,7 +354,7 @@ def referral_list(request):
         user_practice = None
 
     if user_practice:
-        referrals = Referral.objects.filter(provider__practice=user_practice)
+        referrals = Referral.objects.filter(Q(provider__practice=user_practice) | Q(provider__isnull=True))
     else:
         referrals = Referral.objects.all()
 
@@ -347,8 +386,14 @@ def referral_detail(request, pk):
 def referral_detail_api(request, pk):
     try:
         referral = get_object_or_404(Referral, pk=pk)
-        user_practice = request.user.userprofile.practice
+        try:
+            user_practice = request.user.userprofile.practice
+        except UserProfile.DoesNotExist:
+            logging.error("UserProfile.DoesNotExist for user: %s", request.user.username)
+            return JsonResponse({'error': 'User has no practice associated with their profile.'}, status=400)
+
         if not user_practice or not user_practice.athena_practice_id:
+            logging.error("User %s has no practice or athena_practice_id.", request.user.username)
             return JsonResponse({'error': 'User has no practice ID configured.'}, status=400)
         practice_id = user_practice.athena_practice_id
         
@@ -356,6 +401,7 @@ def referral_detail_api(request, pk):
         order_id = referral.athena_document_id
 
         if not encounter_id or not order_id:
+            logging.error("Referral %s is missing Athena encounter or order ID.", pk)
             return JsonResponse({'error': 'Referral is missing the Athena encounter or order ID.'}, status=400)
 
         token = get_token()
@@ -1030,8 +1076,8 @@ def create_referral_order_ajax(request):
             note_to_patient = data.get('notetopatient', '')
 
             # Create local referral
-            provider_npi = data['provider_id']
-            provider = Provider.objects.get(npi=provider_npi)
+            provider_id = data['provider_id']
+            provider = Provider.objects.get(providerid=provider_id, practice=user_practice)
             patient, _ = Patient.objects.get_or_create(original_id=patient_id)
             
             payer = None
@@ -1217,157 +1263,12 @@ from . import athena_client
 from django.http import StreamingHttpResponse
 
 # Helper functions for Athena sync
-def _sync_providers(practice, in_network_ids):
-    token = athena_client.get_token()
-    practice_id = practice.athena_practice_id
-    
-    yield "Fetching provider master list from Athena..."
-    providers_data = athena_client.get("providers", practice_id, token, params={"limit": 500})
-    if not providers_data or not providers_data.get("providers"):
-        yield "No providers found in Athena for this practice."
-        return
-
-    provider_count = 0
-    for provider_summary in providers_data["providers"]:
-        provider_id = str(provider_summary.get('providerid'))
-        if not provider_id:
-            continue
-
-        is_in_network = provider_id in in_network_ids
-
-        Provider.objects.update_or_create(
-            practice=practice, providerid=provider_id,
-            defaults={
-                'npi': provider_summary.get('npi'),
-                'full_name': provider_summary.get('displayname') or f"{provider_summary.get('firstname', '')} {provider_summary.get('lastname', '')}".strip(),
-                'firstname': provider_summary.get('firstname'),
-                'lastname': provider_summary.get('lastname'),
-                'specialty': provider_summary.get('specialty'),
-                'is_in_network': is_in_network,
-            }
-        )
-        provider_count += 1
-    yield f"Synced {provider_count} providers. Marked {len(in_network_ids)} providers as in-network based on the provided list."
-
-def _sync_referrals(practice):
-    token = athena_client.get_token()
-    practice_id = practice.athena_practice_id
-
-    practice_provider_ids = list(practice.provider_set.values_list('providerid', flat=True))
-    all_patients = Patient.objects.all()
-    
-    referral_count = 0
-    skipped_count = 0
-    error_count = 0
-    
-    yield f"Found {len(all_patients)} patients to check for referrals..."
-
-    for i, patient in enumerate(all_patients):
-        if (i + 1) % 10 == 0:
-             yield f"Processing patient {i+1} of {len(all_patients)}..."
-
-        if not patient.original_id:
-            continue
-        try:
-            # Get patient details to store their name
-            patient_details_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/patients/{patient.original_id}"
-            response = requests.get(patient_details_url, headers={"Authorization": f"Bearer {token}"})
-            response.raise_for_status()
-            patient_data = response.json()[0]
-            patient.first_name = patient_data.get("firstname")
-            patient.last_name = patient_data.get("lastname")
-            patient.save()
-
-            referrals_data = athena_client.get(f"patients/{patient.original_id}/referralauths", practice_id, token, params={"limit": 100})
-
-            if not referrals_data or not referrals_data.get("referralauths"):
-                continue
-
-            for auth in referrals_data["referralauths"]:
-                referring_provider_id_str = auth.get('referringproviderid')
-
-                if not referring_provider_id_str:
-                    skipped_count += 1
-                    continue
-                
-                try:
-                    referring_provider_id = int(referring_provider_id_str)
-                except (ValueError, TypeError):
-                    skipped_count += 1
-                    continue
-
-                if referring_provider_id not in practice_provider_ids:
-                    skipped_count += 1
-                    continue
-
-                try:
-                    provider = Provider.objects.get(providerid=referring_provider_id, practice=practice)
-                except Provider.DoesNotExist:
-                    skipped_count += 1
-                    continue
-
-                referral_date_str = auth.get('referralauthdate')
-                if not referral_date_str:
-                    referral_date = timezone.now().date()
-                else:
-                    referral_date = datetime.strptime(referral_date_str, '%m/%d/%Y').date()
-
-                Referral.objects.update_or_create(
-                    athena_document_id=auth.get('referralauthid'),
-                    defaults={
-                        'patient': patient,
-                        'provider': provider,
-                        'referral_date': referral_date,
-                        'specialty': provider.specialty,
-                        'status': (auth.get("referralauthtype") or "pending").lower(),
-                        'cost_value': Decimal(auth.get("amount", "0") or "0"),
-                    }
-                )
-                referral_count += 1
-        except Exception as e:
-            error_count += 1
-            logging.error(f"Failed to sync referrals for patient {patient.original_id}: {e}")
-            continue
-    
-    if skipped_count > 0:
-        yield f"Skipped {skipped_count} referrals that did not belong to a provider in this practice or had other data issues."
-    if error_count > 0:
-        yield f"Encountered {error_count} errors fetching patient referral data. See server logs for details."
-    
-    yield f"Synced {referral_count} referrals."
 
 
-@login_required
-@user_passes_test(lambda u: u.is_superuser)
-def sync_stream_view(request):
-    practice_id = request.GET.get('practice_id')
-    in_network_ids_str = request.GET.get('in_network_provider_ids', '')
-    in_network_ids = {pid.strip() for pid in in_network_ids_str.split(',') if pid.strip()}
 
-    def event_stream():
-        try:
-            practice = Practice.objects.get(id=practice_id)
-            yield f"event: message\ndata: Starting sync for {practice.name}...\n\n"
-            
-            # Sync providers and stream results
-            for message in _sync_providers(practice, in_network_ids):
-                yield f"event: message\ndata: {message}\n\n"
 
-            # Sync referrals and stream results
-            for message in _sync_referrals(practice):
-                yield f"event: message\ndata: {message}\n\n"
 
-            yield f"event: message\ndata: Sync complete!\n\n"
 
-        except Practice.DoesNotExist:
-            yield f"event: error\ndata: Practice not found.\n\n"
-        except Exception as e:
-            logging.error(f"An error occurred during Athena sync stream: {e}")
-            yield f"event: error\ndata: An error occurred: {e}\n\n"
-        finally:
-            yield "event: close\ndata: Connection closed\n\n"
-
-    return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
 
 
 @login_required
@@ -1389,7 +1290,7 @@ def management(request):
                 messages.success(request, f"In-network providers updated for {practice.name}.")
             except Practice.DoesNotExist:
                 messages.error(request, "Practice not found.")
-            return redirect('management')
+            return redirect('analytics:management')
     # Handle Create Practice Form
     if 'create_practice' in request.POST:
         name = request.POST.get('name')
@@ -1406,7 +1307,7 @@ def management(request):
                 messages.warning(request, f'Practice with Athena ID "{athena_id}" already exists.')
         else:
             messages.error(request, 'All fields are required to create a practice.')
-        return redirect('management')
+        return redirect('analytics:management')
 
     # Handle Create User Form
     if 'create_user' in request.POST:
@@ -1436,415 +1337,13 @@ def management(request):
                 messages.error(request, "The selected practice does not exist.")
         else:
             messages.error(request, 'All fields are required to create a user.')
-        return redirect('management')
+        return redirect('analytics:management')
 
     practices = Practice.objects.all()
     return render(request, 'analytics/management.html', {'practices': practices})
-def _run_import_athena(practice_id_arg, client_id_arg, client_secret_arg):
-    import hashlib
-    from datetime import datetime, timedelta
-    import requests
-    from django.utils import timezone
-    from analytics.models import Patient, Provider, Referral, ImportLog
-    from analytics.athena_client import get_token # Assuming get_token can be used with client_id/secret
 
-    yield f"Starting import_athena for practice ID: {practice_id_arg}"
-    initial_referral_count = Referral.objects.count()
-    yield f"Pre-run check: Found {initial_referral_count} existing referrals."
-    task_name = "import_athena_appointments"
-    current_run_time = timezone.now()
 
-    try:
-        last_run = ImportLog.objects.filter(task_name=task_name, status="success").latest("last_run_at")
-        start_date = last_run.last_run_at.date()
-        yield f"Last successful run was on {start_date:%Y-%m-%d}. Fetching changes since then."
-    except ImportLog.DoesNotExist:
-        start_date = (current_run_time - timedelta(days=30)).date()
-        yield "No previous successful run found. Fetching data for the last 30 days."
-    end_date = current_run_time.date()
 
-    token_url = "https://api.preview.platform.athenahealth.com/oauth2/v1/token"
-    try:
-        token_resp = requests.post(
-            token_url,
-            data={
-                "grant_type": "client_credentials",
-                "client_id": client_id_arg,
-                "client_secret": client_secret_arg,
-                "scope": "athena/service/Athenanet.MDP.*",
-            },
-        )
-        token_resp.raise_for_status()
-        access_token = token_resp.json()["access_token"]
-    except requests.RequestException as e:
-        ImportLog.objects.create(task_name=task_name, last_run_at=current_run_time, status="failed", notes=f"Token Error: {e}")
-        yield f"Failed to obtain OAuth token: {e}"
-        return
-
-    headers = {"Authorization": f"Bearer {access_token}"}
-
-    # Fetch appointment cancellation reasons for 'no-show' mapping
-    noshow_reason_ids = set()
-    try:
-        cancel_reasons_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id_arg}/appointmentcancelreasons"
-        response = requests.get(cancel_reasons_url, headers=headers)
-        response.raise_for_status()
-        cancel_reasons_data = response.json()
-        cancel_reasons = cancel_reasons_data.get('appointmentcancelreasons', [])
-        for reason in cancel_reasons:
-            if reason.get('noshow'):
-                noshow_reason_ids.add(str(reason.get('appointmentcancelreasonid')))
-        yield f"Found {len(noshow_reason_ids)} 'no-show' cancellation reason IDs."
-    except requests.RequestException as e:
-        yield f"Failed to fetch appointment cancel reasons: {e}"
-
-    try:
-        provider_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id_arg}/providers"
-        response = requests.get(provider_url, headers=headers)
-        response.raise_for_status()
-        providers_data = response.json().get("providers", [])
-
-        provider_count = 0
-        for provider_data in providers_data:
-            provider_id = str(provider_data.get("providerid"))
-            if not provider_id: continue
-
-            _, created = Provider.objects.update_or_create(
-                npi=provider_id, 
-                defaults={
-                    "full_name": provider_data.get("displayname") or f"Provider {provider_id}",
-                    "providerid": provider_id # Ensure providerid is set
-                }
-            )
-            if created:
-                provider_count += 1
-        yield f"Found and created {provider_count} new providers."
-
-    except requests.RequestException as e:
-        yield f"Failed to fetch providers: {e}"
-        return
-
-    try:
-        all_appointments = []
-        dept_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id_arg}/departments"
-        departments = requests.get(dept_url, headers=headers).json().get("departments", [])
-
-        for dept in departments:
-            department_id = dept['departmentid']
-            yield f"Fetching appointments for Department ID: {department_id}..."
-            
-            params = {
-                "departmentid": department_id,
-                "startdate": start_date.isoformat(),
-                "enddate": end_date.isoformat(),
-            }
-            appt_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id_arg}/appointments/booked"
-            response = requests.get(appt_url, headers=headers, params=params)
-            response.raise_for_status()
-            all_appointments.extend(response.json().get("appointments", []))
-
-        yield f"Found {len(all_appointments)} total appointments to process."
-    except requests.RequestException as e:
-        ImportLog.objects.create(task_name=task_name, last_run_at=current_run_time, status="failed", notes=f"API Error: {e}")
-        yield f"Failed to fetch appointments: {e}"
-        return
-    created_count = 0
-    updated_count = 0
-    for appt_summary in all_appointments:
-        appointment_id = str(appt_summary.get("appointmentid"))
-        if not appointment_id:
-            continue
-
-        try:
-            # Get detailed appointment data
-            appt_detail_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id_arg}/appointments/{appointment_id}"
-            response = requests.get(appt_detail_url, headers=headers)
-            response.raise_for_status()
-            appt = response.json()[0]
-
-            patient_id = str(appt.get("patientid"))
-            provider_id = str(appt.get("providerid"))
-
-            if not patient_id or not provider_id:
-                continue
-
-            # Get patient details to store their name
-            patient_details_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id_arg}/patients/{patient_id}"
-            response = requests.get(patient_details_url, headers=headers)
-            response.raise_for_status()
-            patient_data = response.json()[0]
-            yield f"  -> Patient data from API: {patient_data}"
-
-            patient, created = Patient.objects.get_or_create(
-                original_id=patient_id,
-            )
-            if created:
-                patient.save()  # Ensure pseudonym is created
-
-            patient.first_name = patient_data.get("firstname")
-            patient.last_name = patient_data.get("lastname")
-            patient.save()
-
-            provider, _ = Provider.objects.get_or_create(
-                npi=provider_id, defaults={"full_name": f"Provider {provider_id}"}
-            )
-
-            ref_date_str = appt.get("date")
-            if ref_date_str:
-                ref_date = datetime.strptime(ref_date_str, "%m/%d/%Y").date()
-            else:
-                ref_date = timezone.now().date()
-
-            # Determine Status
-            status = Referral.Status.SCHEDULED
-            if appt.get('replacementappointmentid'):
-                status = Referral.Status.RESCHEDULED
-            elif appt.get('appointmentstatus') == 'x':  # Cancelled
-                cancel_reason_id = str(appt.get('appointmentcancellationreasonid'))
-                if cancel_reason_id in noshow_reason_ids:
-                    status = Referral.Status.NO_SHOW
-                else:
-                    status = Referral.Status.CANCELLED
-            elif appt.get('appointmentstatus') in ['2', '3', '4']:  # Checked-in, Checked-out, Charge Entered
-                status = Referral.Status.COMPLETED
-
-            _, created = Referral.objects.update_or_create(
-                athena_document_id=appointment_id,
-                defaults={
-                    "patient": patient,
-                    "provider": provider,
-                    "referral_date": ref_date,
-                    "specialty": provider.specialty,
-                    "status": status,
-                }
-            )
-
-            if created:
-                created_count += 1
-            else:
-                updated_count += 1
-        except requests.RequestException as e:
-            yield f"Could not process appointment {appointment_id}: {e}"
-            continue
-    
-    ImportLog.objects.update_or_create(
-        task_name=task_name,
-        defaults={
-            "last_run_at": current_run_time,
-            "status": "success",
-            "notes": f"Created {created_count} and updated {updated_count} referrals."
-        }
-    )
-    yield f"Import complete. Created {created_count} and updated {updated_count} referrals."
-
-def _run_import_athena_data(practice_id_arg, page_size_arg=25):
-    from decimal import Decimal
-    from django.core.paginator import Paginator
-    from analytics.models import Provider, Patient, Referral, Payer
-    from analytics.athena_client import get_token, get
-    from datetime import datetime
-    from django.utils import timezone
-
-    yield f"Starting import_athena_data for practice ID: {practice_id_arg} with page size: {page_size_arg}"
-    token = get_token()
-    all_providers = list(Provider.objects.all())
-    if not all_providers:
-        yield "No providers found. Please run import_athena first."
-        return
-
-    yield "Importing referral authorizations..."
-    all_patients = Patient.objects.all().order_by('id')
-    paginator = Paginator(all_patients, page_size_arg)
-    total_created = 0
-    total_updated = 0
-
-    for page_num in paginator.page_range:
-        yield f"-- Processing page {page_num} of {paginator.num_pages} --"
-        for patient in paginator.page(page_num).object_list:
-            insurances_data = None
-            try:
-                insurances_data = get(f"patients/{patient.original_id}/insurances", practice_id_arg, token)
-            except Exception as e:
-                yield f"API error for patient {patient.original_id} insurances: {e}. Skipping insurance data."
-
-            eligibility_by_payer = {}
-            if insurances_data and insurances_data.get("insurances"):
-                eligibility_by_payer = {
-                    str(ins.get("insurancepackageid")): ins.get("eligibilitystatus", "").lower() == "eligible"
-                    for ins in insurances_data.get("insurances", [])
-                }
-
-            try:
-                referral_to_update = Referral.objects.filter(
-                    patient=patient,
-                    status=Referral.Status.PENDING
-                ).latest('referral_date')
-            except Referral.DoesNotExist:
-                continue
-
-            refauths_data = None
-            try:
-                refauths_data = get(f"patients/{patient.original_id}/referralauths", practice_id_arg, token)
-            except Exception as e:
-                yield f"API error for patient {patient.original_id} referral auths: {e}. Skipping referral auth data."
-
-            auth = None
-            if refauths_data and refauths_data.get("referralauths"):
-                if not referral_to_update.provider:
-                    yield f"Referral {referral_to_update.id} has no provider. Skipping update."
-                    continue
-
-                provider_npi = referral_to_update.provider.npi
-                for ra_auth in refauths_data.get("referralauths", []):
-                    if str(ra_auth.get("referringproviderid")) == provider_npi:
-                        auth = ra_auth
-                        break
-
-            if not auth:
-                yield f"No live referral auth data found for referral {referral_to_update.id}. Skipping update."
-                continue
-
-            payer_code = list(eligibility_by_payer.keys())[0] if eligibility_by_payer else None
-            payer = None
-            if payer_code:
-                payer, _ = Payer.objects.get_or_create(code=payer_code, defaults={"name": f"Payer {payer_code}"})
-
-            is_in_network = eligibility_by_payer.get(payer_code, False) if payer_code else False
-            status = (auth.get("referralauthtype") or "pending").lower()
-            if status not in Referral.Status.values: status = Referral.Status.PENDING
-
-            ack_at_str = auth.get("acknowledged_at")
-            if ack_at_str:
-                referral_to_update.ack_at = datetime.strptime(ack_at_str, "%Y-%m-%dT%H:%M:%SZ")
-                # If acknowledged_at is present, set status to ACKNOWLEDGED,
-                # but don't downgrade if it's already a more advanced status.
-                if status in [Referral.Status.PENDING, Referral.Status.SENT]:
-                    status = Referral.Status.ACKNOWLEDGED
-            else:
-                referral_to_update.ack_at = None
-
-            referral_to_update.status = status
-
-            # Fetch patient encounters to get visit summary
-            visit_summary_text = ""
-            try:
-                encounters_data = get(f"patients/{patient.original_id}/encounters", practice_id_arg, token)
-                if encounters_data and encounters_data.get('encounters'):
-                    # Sort encounters by date to find the most recent relevant one
-                    sorted_encounters = sorted(encounters_data['encounters'], key=lambda x: datetime.strptime(x['encounterdate'], '%m/%d/%Y'), reverse=True)
-
-                    # Try to find an encounter close to the referral date or scheduled date
-                    target_date = referral_to_update.scheduled_at.date() if referral_to_update.scheduled_at else referral_to_update.referral_date
-                    
-                    best_encounter = None
-                    min_date_diff = timedelta(days=365 * 100) # A very large difference
-
-                    for enc in sorted_encounters:
-                        enc_date = datetime.strptime(enc['encounterdate'], '%m/%d/%Y').date()
-                        date_diff = abs(target_date - enc_date)
-                        if date_diff < min_date_diff:
-                            min_date_diff = date_diff
-                            best_encounter = enc
-                        # If we find an exact match, we can stop
-                        if date_diff == timedelta(days=0):
-                            break
-                    
-                    if best_encounter:
-                        # Construct a simple summary from the best matching encounter
-                        summary_parts = []
-                        if best_encounter.get('encountertype'):
-                            summary_parts.append(f"Type: {best_encounter['encountertype']}")
-                        if best_encounter.get('encounterdate'):
-                            summary_parts.append(f"Date: {best_encounter['encounterdate']}")
-                        if best_encounter.get('reasonforvisit'):
-                            summary_parts.append(f"Reason: {best_encounter['reasonforvisit']}")
-                        if best_encounter.get('diagnoses'):
-                            diag_names = [d.get('name') for d in best_encounter['diagnoses'] if d.get('name')]
-                            if diag_names:
-                                summary_parts.append(f"Diagnoses: {', '.join(diag_names)}")
-                        
-                        visit_summary_text = "; ".join(summary_parts)
-                        if not visit_summary_text: # Fallback if no specific parts found
-                            visit_summary_text = f"Encounter ID: {best_encounter.get('encounterid')}, Date: {best_encounter.get('encounterdate')}"
-
-            except Exception as e:
-                yield f"API error fetching encounters for patient {patient.original_id}: {e}. Skipping visit summary."
-            
-            referral_to_update.visit_summary = visit_summary_text
-
-            scheduled_at_str = auth.get("scheduled_at")
-            referral_to_update.scheduled_at = datetime.strptime(scheduled_at_str, "%Y-%m-%dT%H:%M:%SZ") if scheduled_at_str else None
-            completed_at_str = auth.get("completed_at")
-            referral_to_update.completed_at = datetime.strptime(completed_at_str, "%Y-%m-%dT%H:%M:%SZ") if completed_at_str else None
-            cancelled_at_str = auth.get("cancelled_at")
-            referral_to_update.cancelled_at = datetime.strptime(cancelled_at_str, "%Y-%m-%dT%H:%M:%SZ") if cancelled_at_str else None
-            referral_to_update.save()
-            total_updated += 1
-            yield f"Import complete. Updated {total_updated} referrals."
-            if provider_detail.get("displayname"):
-                provider.full_name = provider_detail.get("displayname")
-            else:
-                provider.full_name = f"{provider_detail.get('firstname', '')} {provider_detail.get('lastname', '')}"
-            provider.specialty = provider_detail.get("specialty")
-            provider.subspecialty = provider_detail.get("specialty2")
-            department_id = provider_detail.get("usualdepartmentid")
-            if department_id:
-                try:
-                    department_data_list = get(f"departments/{department_id}", practice_id_arg, token)
-                    if department_data_list:
-                        department_data = department_data_list[0]
-                        provider.city = department_data.get("city")
-                        provider.state = department_data.get("state")
-                        provider.primary_department = department_data.get("name")
-                        yield f"Set primary department for {provider.full_name} to {provider.primary_department}"
-                        if department_data.get("ishospitaldepartment"):
-                            hospital, _ = Hospital.objects.get_or_create(name=department_data.get("name"))
-                            # provider.hospital_affiliations.add(hospital) # Assuming M2M field exists
-                except requests.RequestException as e:
-                    yield f"API error for department {department_id}: {e}. Skipping location data."
-                    provider.accepting_new_patients = provider_detail.get("acceptingnewpatients")
-                    provider.save()
-                    updated_count += 1
-                except Provider.DoesNotExist:
-                    yield f"Provider with ID {provider_id} not found in local DB. Skipping update."
-                except requests.RequestException as e:
-                    yield f"API error for provider {provider_id}: {e}. Skipping provider."
-                    yield f"Successfully updated {updated_count} providers."
-                except requests.RequestException as e:
-                    yield f"Failed to fetch providers: {e}"
-
-def _run_import_provider_data(practice_id_arg):
-    import subprocess
-    import sys
-    from django.conf import settings
-
-    command = [
-        sys.executable,
-        str(settings.BASE_DIR / "manage.py"),
-        "import_provider_data",
-        f"--practice_id={practice_id_arg}",
-    ]
-
-    yield f"Running command: {' '.join(command)}"
-
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-        universal_newlines=True,
-    )
-
-    for line in process.stdout:
-        yield line.strip()
-
-    process.wait()
-
-    if process.returncode == 0:
-        yield "Command finished successfully."
-    else:
-        yield f"Command failed with return code {process.returncode}."
 
 
 @login_required
@@ -1854,20 +1353,17 @@ def stream_command_view(request):
     practice_id = request.GET.get('practice_id')
     client_id = request.GET.get('client_id')
     client_secret = request.GET.get('client_secret')
-    page_size = request.GET.get('page_size')
+
     def event_stream():
-        if command_name == 'import_provider_data':
-            for message in _run_import_provider_data(practice_id):
-                yield f"event: message\ndata: {message}\n\n"
-        elif command_name == 'import_athena':
-            for message in _run_import_athena(practice_id, client_id, client_secret):
-                yield f"event: message\ndata: {message}\n\n"
-        elif command_name == 'import_athena_data':
-            for message in _run_import_athena_data(practice_id, int(page_size) if page_size else 25):
+        if command_name == 'run_full_sync':
+            yield f"event: message\ndata: Starting full Athena sync for practice ID {practice_id}...\n\n"
+            for message in run_full_athena_sync(practice_id, client_id, client_secret):
                 yield f"event: message\ndata: {message}\n\n"
         else:
-            yield f"event: message\ndata: Unknown command: {command_name}\n\n"
-        yield "event: close\ndata: Connection closed\n\n"
+            yield f"event: error\ndata: Unknown or obsolete command: {command_name}. Please use 'run_full_sync'.\n\n"
+        
+        yield "event: close\ndata: Sync process finished.\n\n"
+
     return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
 # --- Delete referral ---
 def delete_referral(request, pk):
@@ -1883,8 +1379,14 @@ def delete_referral(request, pk):
 def get_referral_details_ajax(request, pk):
     try:
         referral = get_object_or_404(Referral, pk=pk)
-        user_practice = request.user.userprofile.practice
+        try:
+            user_practice = request.user.userprofile.practice
+        except UserProfile.DoesNotExist:
+            logging.error("UserProfile.DoesNotExist for user: %s", request.user.username)
+            return JsonResponse({'error': 'User has no practice associated with their profile.'}, status=400)
+
         if not user_practice or not user_practice.athena_practice_id:
+            logging.error("User %s has no practice or athena_practice_id.", request.user.username)
             return JsonResponse({'error': 'User has no practice ID configured.'}, status=400)
         practice_id = user_practice.athena_practice_id
         
@@ -1892,6 +1394,7 @@ def get_referral_details_ajax(request, pk):
         order_id = referral.athena_document_id
 
         if not encounter_id or not order_id:
+            logging.error("Referral %s is missing Athena encounter or order ID.", pk)
             return JsonResponse({'error': 'Referral is missing the Athena encounter or order ID.'}, status=400)
 
         token = get_token()
@@ -1906,13 +1409,13 @@ def get_referral_details_ajax(request, pk):
             if order_details and isinstance(order_details, list):
                 # If the endpoint returns a list (even if it's a single item list)
                 if order_details[0]: # Check if the list is not empty
-                    logging.info(f"Returning JSON for order: {JsonResponse(order_details[0]).content.decode("utf-8")}")
+                    logging.info(f"Returning JSON for order: {JsonResponse(order_details[0]).content.decode('utf-8')}")
                     return JsonResponse(order_details[0])
                 else:
                     return JsonResponse({'error': f'Empty response from Athena for Order ID {order_id}.'}, status=404)
             elif order_details:
                 # If the endpoint returns a single dictionary directly
-                logging.info(f"Returning JSON for order: {JsonResponse(order_details).content.decode("utf-8")}")
+                logging.info(f"Returning JSON for order: {JsonResponse(order_details).content.decode('utf-8')}")
                 return JsonResponse(order_details)
         except requests.exceptions.HTTPError as http_err:
             logging.error(f"Athena API HTTP Error ({http_err.response.status_code}): {http_err.response.text}", exc_info=True)
@@ -1925,17 +1428,28 @@ def get_referral_details_ajax(request, pk):
         logging.error(f"A critical error occurred in get_referral_details_ajax: {e}", exc_info=True)
         return JsonResponse({'error': 'An unexpected error occurred.'}, status=500)
 
+
+@login_required
+@require_POST
+def update_referral_status_ajax(request, pk):
+    try:
+        referral = get_object_or_404(Referral, pk=pk)
+        new_status = request.POST.get('status')
+        if new_status and new_status.lower() in Referral.Status.values:
+            referral.status = new_status.lower()
+            referral.save()
+            ReferralHistory.objects.create(referral=referral, status=referral.status)
+            return JsonResponse({'success': True, 'new_status': referral.get_status_display()})
+        else:
+            return JsonResponse({'success': False, 'error': 'Invalid status.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 def referral_detail(request, pk):
     referral = get_object_or_404(Referral, pk=pk)
-    suggested = get_suggested_providers(referral)
-    metrics = get_provider_metrics()
-    suggested_with_metrics = []
-    for p in suggested:
-        m = metrics.get(p.id, {'in_network_rate': 0, 'completion_rate': 0, 'avg_days': 0})
-        suggested_with_metrics.append({'provider': p, 'metrics': m})
     return render(request, 'analytics/referral_detail.html', {
         'referral': referral,
-        'suggested_with_metrics': suggested_with_metrics,
     })
     try:
         user_practice = request.user.userprofile.practice
@@ -1966,14 +1480,324 @@ def referral_detail(request, pk):
     for referral in referrals:
         data.append({
             'pk': referral.pk,
-            'patient_str': str(referral.patient),
-            'provider_str': str(referral.provider) if referral.provider else 'N/A',
-            'specialty': referral.specialty,
-            'referral_date': referral.referral_date.strftime('%Y-%m-%d'),
-            'status_val': referral.status,
-            'status_display': referral.get_status_display(),
             'in_network': referral.in_network,
             'detail_url': reverse('referral_detail', args=[referral.pk]),
         })
 
     return JsonResponse(data, safe=False)
+
+
+def _get_athena_token(client_id, client_secret):
+    """Helper to get athena token, abstracting the request."""
+    token_url = "https://api.preview.platform.athenahealth.com/oauth2/v1/token"
+    try:
+        token_resp = requests.post(
+            token_url,
+            data={
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "scope": "athena/service/Athenanet.MDP.*",
+            },
+        )
+        token_resp.raise_for_status()
+        return token_resp.json()["access_token"]
+    except requests.RequestException as e:
+        logging.error(f"Failed to obtain OAuth token: {e}")
+        return None
+
+def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
+    """
+    A comprehensive, unified sync function for a given practice.
+    This function establishes a baseline of referral orders and then updates their
+    status from the authoritative encounter context.
+    """
+    from .models import ImportLog, Practice, Patient, Provider, Referral
+    
+    task_name = "run_full_athena_sync"
+    current_run_time = timezone.now()
+    
+    # --- Step 1: Initialization ---
+    yield "Step 1: Initializing Sync Process..."
+    try:
+        practice = Practice.objects.get(id=practice_id_arg)
+        athena_practice_id = practice.athena_practice_id
+    except Practice.DoesNotExist:
+        yield f"ERROR: Practice with local ID {practice_id_arg} not found. Aborting."
+        return
+
+    token = _get_athena_token(client_id_arg, client_secret_arg)
+    if not token:
+        yield "ERROR: Failed to obtain Athena API token. Aborting sync."
+        ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes":"Failed to obtain token."})
+        return
+    yield "Token obtained successfully."
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # --- Step 2: Sync Providers ---
+    yield "\nStep 2: Syncing Providers..."
+    try:
+        provider_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/providers?limit=1000"
+        response = requests.get(provider_url, headers=headers)
+        response.raise_for_status()
+        providers_data = response.json().get("providers", [])
+
+        created_count = 0
+        updated_count = 0
+        for provider_data in providers_data:
+            provider_id = str(provider_data.get("providerid"))
+            if not provider_id: continue
+
+            provider, created = Provider.objects.update_or_create(
+                practice=practice,
+                providerid=provider_id,
+                defaults={
+                    "full_name": provider_data.get("displayname") or f"Provider {provider_id}",
+                    "npi": provider_data.get("npi"),
+                    "specialty": provider_data.get("specialty"),
+                }
+            )
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+        yield f"Synced providers. {created_count} new providers created, {updated_count} updated."
+    except requests.RequestException as e:
+        yield f"ERROR during Provider Sync: {e}. Aborting."
+        ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during provider sync: {e}"})
+        return
+
+    # --- Step 3: Sync Patients ---
+    # yield "\nStep 3: Syncing Patients..."
+    # try:
+    #     # First, get all departments for the practice
+    #     yield "  Fetching all departments..."
+    #     departments_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/departments?limit=1000"
+    #     response = requests.get(departments_url, headers=headers)
+    #     response.raise_for_status()
+    #     departments_data = response.json().get("departments", [])
+    #     department_ids = [d['departmentid'] for d in departments_data if 'departmentid' in d]
+    #     yield f"  Found {len(department_ids)} departments."
+
+    #     patients_created_count = 0
+    #     patients_updated_count = 0
+    #     synced_patient_ids = set()
+    #     alphabet = "abcdefghijklmnopqrstuvwxyz"
+
+    #     # Then, iterate over each department and each letter of the alphabet for the first name
+    #     for dept_id in department_ids:
+    #         for letter in alphabet:
+    #             yield f"  Fetching patients for department {dept_id} with first name starting with '{letter}'..."
+    #             logging.info(f"Fetching patients for department {dept_id} with first name starting with '{letter}'...")
+                
+    #             offset = 0
+    #             limit = 1000
+                
+    #             while True:
+    #                 patient_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/patients"
+    #                 params = {
+    #                     'departmentid': dept_id,
+    #                     'firstname': letter,
+    #                     'limit': limit,
+    #                     'offset': offset
+    #                 }
+                    
+    #                 logging.info(f"Attempting to fetch patients from {patient_url} with params: {params}")
+
+    #                 try:
+    #                     response = requests.get(patient_url, headers=headers, params=params)
+    #                     response.raise_for_status()
+                        
+    #                     patients_data = response.json()
+    #                     patient_list = patients_data.get("patients", [])
+                        
+    #                     if not patient_list:
+    #                         break
+
+    #                     for patient_data in patient_list:
+    #                         athena_patient_id = str(patient_data.get("patientid"))
+    #                         if not athena_patient_id or athena_patient_id in synced_patient_ids:
+    #                             continue
+                            
+    #                         synced_patient_ids.add(athena_patient_id)
+
+    #                         patient, created = Patient.objects.update_or_create(
+    #                             original_id=athena_patient_id,
+    #                             defaults={
+    #                                 "first_name": patient_data.get("firstname"),
+    #                                 "last_name": patient_data.get("lastname"),
+    #                             }
+    #                         )
+    #                         if created:
+    #                             patients_created_count += 1
+    #                         else:
+    #                             patients_updated_count += 1
+                        
+    #                     total_synced = len(synced_patient_ids)
+    #                     yield f"  Total unique patients synced so far: {total_synced} (New: {patients_created_count}, Updated: {patients_updated_count})"
+
+    #                     if 'next' in patients_data:
+    #                         offset += limit
+    #                     else:
+    #                         break
+                    
+    #                 except requests.exceptions.HTTPError as e:
+    #                     # If a 400-level error occurs for a specific letter, it might be that there are no patients starting with that letter.
+    #                     # We should log it and continue.
+    #                     logging.warning(f"Could not fetch patients for department {dept_id} and letter '{letter}'. Status code: {e.response.status_code}. Response: {e.response.text}")
+    #                     yield f"  No patients found for department {dept_id} with first name starting with '{letter}'. Continuing..."
+    #                     break # Break the while loop for this letter and move to the next
+                
+    #     yield f"Synced patients. {patients_created_count} new patients created, {patients_updated_count} updated across {len(department_ids)} departments."
+    # except requests.RequestException as e:
+    #     logging.error(f"Athena API Error (Patient Sync): {e}")
+    #     if 'response' in locals() and response:
+    #         logging.error(f"Response body: {response.text}")
+    #     yield f"ERROR during Patient Sync: {e}. Check logs for details. Aborting."
+    #     ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during patient sync: {e}"})
+    #     return
+
+            # --- Step 4: Sync Referrals ---
+    yield "\nStep 4: Syncing Referrals..."
+    try:
+        from django.core.paginator import Paginator
+        from datetime import datetime
+
+        # First, get all departments for the practice
+        yield "  Fetching all departments for referral sync..."
+        departments_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/departments?limit=1000"
+        response = requests.get(departments_url, headers=headers)
+        response.raise_for_status()
+        departments_data = response.json().get("departments", [])
+        department_ids = [d['departmentid'] for d in departments_data if 'departmentid' in d]
+        num_departments = len(department_ids)
+        yield f"  Found {num_departments} departments."
+
+        num_patients = Patient.objects.count()
+        
+        # --- Time Estimation ---
+        if num_patients > 0 and num_departments > 0:
+            time_per_call_seconds = 0.75 # Conservative estimate
+            total_api_calls = num_patients * num_departments
+            estimated_total_seconds = total_api_calls * time_per_call_seconds
+            
+            hours = int(estimated_total_seconds // 3600)
+            minutes = int((estimated_total_seconds % 3600) // 60)
+            
+            yield "\n" # Yield the newline separately
+            yield f"  ESTIMATE: Based on {num_patients} patients and {num_departments} departments, the referral sync will make approximately {total_api_calls} API calls."
+            yield f"  Estimated time: about {hours} hours and {minutes} minutes."
+            yield "  This is a rough estimate and the actual time may vary."
+        # --- End Time Estimation ---
+
+        all_patients = Patient.objects.all().order_by('id')
+        paginator = Paginator(all_patients, 25) # Process 25 patients at a time
+
+        referrals_created_count = 0
+        referrals_updated_count = 0
+        skipped_count = 0
+        
+        practice_provider_ids = set(practice.provider_set.values_list('providerid', flat=True))
+
+        for page_num in paginator.page_range:
+            yield f"  Processing patient page {page_num} of {paginator.num_pages} for referrals..."
+            for patient in paginator.page(page_num).object_list:
+                if not patient.original_id:
+                    continue
+                if not patient.original_id.strip() == '60178':
+                    continue
+                yield(f"Processing patient {patient.original_id}...")
+                for dept_id in department_ids:
+                    try:
+                        # Use the correct endpoint for patient orders with departmentid
+                        params = {"departmentid": dept_id, "limit": 100}
+                        orders_data = get(f"patients/{patient.original_id}/documents/order", athena_practice_id, token, params=params)
+
+                        logging.info(f"Raw response for patient {patient.original_id}, department {dept_id}: {orders_data}")
+
+                        if not orders_data or not orders_data.get("orders"):
+                            continue
+
+                        for order in orders_data["orders"]:
+                            # Filter for referral orders based on ordertype and description
+                            if not (order.get('ordertype') == 'CONSULT' and 'referral' in order.get('documentdescription', '').lower()):
+                                logging.info(f"Skipping order {order.get('orderid')} for patient {patient.original_id}: Not a referral order.")
+                                skipped_count += 1
+                                continue
+
+                            provider_id_from_order = order.get('providerid')
+                            provider = None # Default to None
+
+                            if provider_id_from_order:
+                                referring_provider_id = provider_id_from_order # Keep as integer
+                                if referring_provider_id not in practice_provider_ids:
+                                    logging.info(f"Skipping order {order.get('orderid')} for patient {patient.original_id}: Provider {referring_provider_id} not in practice.")
+                                    skipped_count += 1
+                                    continue
+                                
+                                try:
+                                    provider = Provider.objects.get(providerid=referring_provider_id, practice=practice)
+                                except Provider.DoesNotExist:
+                                    logging.info(f"Skipping order {order.get('orderid')} for patient {patient.original_id}: Provider {referring_provider_id} not in local database.")
+                                    skipped_count += 1
+                                    continue
+                            else:
+                                logging.info(f"Order {order.get('orderid')} for patient {patient.original_id}: No providerid found. Processing without a specific provider.")
+                            
+                            referral_date_str = order.get('createddate') # "11/02/2025"
+                            if not referral_date_str:
+                                referral_date = timezone.now().date()
+                            else:
+                                referral_date = datetime.strptime(referral_date_str, '%m/%d/%Y').date()
+
+                            referral, created = Referral.objects.update_or_create(
+                                athena_document_id=order.get('orderid'),
+                                defaults={
+                                    'patient': patient,
+                                    'provider': provider, # This can now be None
+                                    'referral_date': referral_date,
+                                    'specialty': provider.specialty if provider else '', # Use provider specialty if available
+                                    'status': (order.get("status") or "pending").lower(),
+                                    'athena_encounter_id': order.get('encounterid'),
+                                    'cost_value': Decimal("0.00"), # Default to 0.00 if not available
+                                    'in_network': provider.is_in_network if provider else False, # False if no provider
+                                }
+                            )
+                            if created:
+                                referrals_created_count += 1
+                            else:
+                                referrals_updated_count += 1
+                    
+                    except requests.exceptions.HTTPError as e:
+                        # It is expected that a patient will not exist in all departments.
+                        # We can safely ignore this specific error.
+                        if e.response.status_code == 400 and "The specified patient does not exist in that department" in e.response.text:
+                            # This is an expected error, so we don't log it as an error.
+                            logging.info(f"Patient {patient.original_id} not in department {dept_id}. Skipping.")
+                        else:
+                            # For any other errors, we still want to log them.
+                            logging.error(f"Failed to sync referrals for patient {patient.original_id} and department {dept_id}: {e}")
+                            yield f"  ERROR: Failed to sync referrals for patient {patient.original_id} and department {dept_id}. See logs."
+                        continue # Continue to the next department
+                    
+                    except Exception as e:
+                        # Catch any other unexpected errors
+                        logging.error(f"An unexpected error occurred for patient {patient.original_id} and department {dept_id}: {e}")
+                        yield f"  ERROR: An unexpected error occurred for patient {patient.original_id} and department {dept_id}. See logs."
+                        continue
+
+        yield f"Synced referrals. Created: {referrals_created_count}, Updated: {referrals_updated_count}, Skipped: {skipped_count}."
+    except Exception as e:
+        logging.error(f"An unexpected error occurred during referral sync: {e}")
+        yield f"ERROR during Referral Sync: {e}. Aborting."
+        ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during referral sync: {e}"})
+        return
+    
+    # --- Finalize ---
+    final_notes = f"Sync complete. Synced providers, patients, and referrals (created: {referrals_created_count}, updated: {referrals_updated_count})."
+    ImportLog.objects.update_or_create(
+        task_name=task_name,
+        defaults={"last_run_at": current_run_time, "status": "success", "notes": final_notes}
+    )
+    yield f"\n{final_notes}"
+

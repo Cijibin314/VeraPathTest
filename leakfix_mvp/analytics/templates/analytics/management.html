@@ -31,7 +31,6 @@
                         <td>{{ practice.athena_practice_id }}</td>
                         <td>{{ practice.location }}</td>
                         <td>
-                            <button class="sync-btn" onclick="startSync('{{ practice.id }}')">Sync with Athena</button>
                             <form action="" method="post" style="display:inline-block; margin-top: 10px;">
                                 {% csrf_token %}
                                 <input type="hidden" name="practice_id" value="{{ practice.id }}">
@@ -47,10 +46,7 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <div id="sync-log-container" style="display: none; margin-top: 1rem;">
-                <h4>Sync Log</h4>
-                <pre id="sync-log" style="background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 1rem; border-radius: 4px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;"></pre>
-            </div>
+
         </div>
 
         <div class="management-section">
@@ -81,34 +77,22 @@
         </div>
 
         <div class="management-section">
-            <h3>Management Commands</h3>
-                        <form onsubmit="runManagementCommand(event)">
-                            {% csrf_token %}
-                            <h4>import_athena</h4>
-                            <input type="hidden" name="command" value="import_athena">
-                            <input type="text" name="practice_id" placeholder="Practice ID" required>
-                            <input type="text" name="client_id" placeholder="Client ID" required>
-                            <input type="text" name="client_secret" placeholder="Client Secret" required>
-                            <button type="submit">Run import_athena</button>
-                        </form>
-            
-                        <form onsubmit="runManagementCommand(event)">
-                            {% csrf_token %}
-                            <h4>import_athena_data</h4>
-                            <input type="hidden" name="command" value="import_athena_data">
-                            <input type="text" name="practice_id" placeholder="Practice ID" required>
-                            <input type="number" name="page_size" placeholder="Page Size (default: 25)">
-                            <button type="submit">Run import_athena_data</button>
-                        </form>
-            
-                        <form onsubmit="runManagementCommand(event)">
-                            {% csrf_token %}
-                            <h4>import_provider_data</h4>
-                            <input type="hidden" name="command" value="import_provider_data">
-                            <input type="text" name="practice_id" placeholder="Practice ID" required>
-                            <button type="submit">Run import_provider_data</button>
-                        </form>
-                    </div>
+            <h3>Run Full Athena Sync</h3>
+            <p>This will perform a full data synchronization with Athena, including providers, patients, referral orders, and appointment-based status updates. This is the primary sync command.</p>
+            <form onsubmit="runManagementCommand(event)">
+                {% csrf_token %}
+                <input type="hidden" name="command" value="run_full_sync">
+                <select name="practice_id" required>
+                    <option value="" disabled selected>Select a practice to sync</option>
+                    {% for practice in practices %}
+                        <option value="{{ practice.id }}">{{ practice.name }} ({{ practice.athena_practice_id }})</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="client_id" placeholder="Client ID" required>
+                <input type="text" name="client_secret" placeholder="Client Secret" required>
+                <button type="submit">Run Full Sync</button>
+            </form>
+        </div>
                 </div>
                 <div class="management-console">
                     <div class="management-section">
@@ -217,7 +201,7 @@
                 }
             
                 commandOutputLog.textContent = 'Initializing command...\n';
-                const url = `/management/stream-command/?${params.toString()}`;
+                const url = `/analytics/management/stream-command/?${params.toString()}`;
                 const evtSource = new EventSource(url);
             
                 evtSource.onmessage = function(event) {
@@ -236,42 +220,7 @@
                 });
               }
             
-            function startSync(practiceId) {
-                const logContainer = document.getElementById('sync-log-container');
-                const logEl = document.getElementById('sync-log');
-                const syncButton = document.querySelector(`tr[data-practice-id="${practiceId}"] .sync-btn`);
-                const inNetworkTextarea = document.querySelector(`tr[data-practice-id="${practiceId}"] textarea[name="in_network_provider_ids"]`);
-            
-                // Show log and disable button
-                logContainer.style.display = 'block';
-                logEl.textContent = 'Initializing sync...\n';
-                syncButton.disabled = true;
-                syncButton.textContent = 'Syncing...';
-            
-                const inNetworkIds = inNetworkTextarea.value;
-                const url = `/management/sync-stream/?practice_id=${practiceId}&in_network_provider_ids=${encodeURIComponent(inNetworkIds)}`;
-            
-                const evtSource = new EventSource(url);
-            
-                evtSource.addEventListener("message", function(event) {
-                    logEl.textContent += event.data + '\n';
-                    logEl.scrollTop = logEl.scrollHeight; // Auto-scroll
-                });
-            
-                evtSource.addEventListener("error", function(event) {
-                    logEl.textContent += 'An error occurred. Connection closed.\n';
-                    evtSource.close();
-                    syncButton.disabled = false;
-                    syncButton.textContent = 'Sync with Athena';
-                });
-            
-                evtSource.addEventListener("close", function(event) {
-                    logEl.textContent += 'Connection closed by server.\n';
-                    evtSource.close();
-                    syncButton.disabled = false;
-                    syncButton.textContent = 'Sync with Athena';
-                });
-            }
+
             </script>
 
 {% endblock %}

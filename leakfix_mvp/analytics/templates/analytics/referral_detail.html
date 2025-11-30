@@ -10,7 +10,7 @@
         N/A
     {% endif %}
 </p>
-<p><strong>Status:</strong> <span id="referral-status-badge" class="badge badge-{{ referral.status|lower }}">{{ referral.get_status_display }}</span></p>
+<p><strong>Status:</strong> <span id="referral-status-badge" class="badge badge-{{ referral.status|lower }}" data-status="{{ referral.status|lower }}">{{ referral.get_status_display }}</span></p>
 <p><strong>In‑network:</strong> {{ referral.in_network }}</p>
 <p><strong>Cost Value:</strong> ${{ referral.cost_value|floatformat:2 }}</p>
 <p><strong>Notes to Provider:</strong> {{ referral.provider_note|default:"N/A" }}</p>
@@ -25,19 +25,7 @@
     </div>
 </div>
 
-<h3>Suggested In‑network Providers</h3>
-<ul>
-  {% for item in suggested_with_metrics %}
-    <li>
-      {{ item.provider.full_name }}
-      (In‑network rate: {{ item.metrics.in_network_rate|floatformat:2 }},
-       Completion rate: {{ item.metrics.completion_rate|floatformat:2 }},
-       Avg days: {{ item.metrics.avg_days|floatformat:2 }})
-    </li>
-  {% empty %}
-    <li>No suggestions available.</li>
-  {% endfor %}
-</ul>
+
 
 <p>
   {% if user.is_superuser %}
@@ -56,6 +44,7 @@
 <script>
 $(document).ready(function() {
     var statusBadge = $('#referral-status-badge');
+    var localStatus = statusBadge.data('status').toLowerCase(); // Get local status from data attribute
     var originalText = statusBadge.text();
     var originalClass = statusBadge.attr('class');
     var athenaDetailsBody = $('#athena-details-body');
@@ -74,9 +63,36 @@ $(document).ready(function() {
                 athenaDetailsBody.append('<p class="text-danger">' + data.error + '</p>');
             } else {
                 if (data.status) {
-                    var liveStatus = data.status.charAt(0).toUpperCase() + data.status.slice(1).toLowerCase();
-                    statusBadge.text(liveStatus + ' (Live)');
-                    statusBadge.attr('class', 'badge badge-' + data.status.toLowerCase());
+                    var liveStatus = data.status.toLowerCase(); // Status from Athena API
+                    var displayLiveStatus = liveStatus.charAt(0).toUpperCase() + liveStatus.slice(1);
+                    statusBadge.text(displayLiveStatus + ' (Live)');
+                    statusBadge.attr('class', 'badge badge-' + liveStatus);
+
+                    // Check if status has changed and update local database
+                    if (liveStatus && liveStatus !== localStatus) {
+                        console.log('Detected status change from Athena. Local:', localStatus, 'Live:', liveStatus);
+                        $.ajax({
+                            url: "{% url 'analytics:update_referral_status_ajax' referral.pk %}",
+                            type: 'POST',
+                            data: {
+                                status: liveStatus,
+                                csrfmiddlewaretoken: $('[name=csrfmiddlewaretoken]').val()
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    console.log('Local referral status updated to:', response.new_status);
+                                    // Optionally update the originalText and localStatus variables if needed
+                                    // originalText = response.new_status;
+                                    // localStatus = liveStatus;
+                                } else {
+                                    console.error('Failed to update local referral status:', response.error);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('AJAX Error updating local status:', status, error);
+                            }
+                        });
+                    }
                 } else {
                     statusBadge.text(originalText + ' (Live status unknown)');
                 }

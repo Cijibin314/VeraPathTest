@@ -57,11 +57,23 @@ def get(endpoint, practice_id, token, params=None):
     """
     Perform a GET request against the Athenahealth API.
     """
-    #base_url = f"https://api.platform.athenahealth.com/v1/{practice_id}"
     base_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}" 
     url = f"{base_url}/{endpoint.lstrip('/')}"
     headers = {"Authorization": f"Bearer {token}"}
+    
+    # Log the full request URL
+    full_url = requests.Request('GET', url, params=params or {}).prepare().url
+    logging.info(f"Athena API Request: GET {full_url}")
 
-    response = requests.get(url, headers=headers, params=params or {})
-    response.raise_for_status()
+    response = requests.get(full_url, headers=headers) # Use full_url here
+    
+    # Log the response status code
+    logging.info(f"Athena API Response Status: {response.status_code}")
+
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        logging.error(f"Athena API Error Response Body: {e.response.text}")
+        raise # Re-raise the exception after logging
+        
     return response.json()

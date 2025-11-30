@@ -37,7 +37,7 @@
                         {% for referral in referrals %}
                         <tr>
                             <td>{{ referral.patient }}</td>
-                            <td>{{ referral.provider }}</td>
+                            <td>{% if referral.provider %}{{ referral.provider }}{% endif %}</td>
                             <td>{{ referral.specialty }}</td>
                             <td>{{ referral.referral_date }}</td>
                             <td>

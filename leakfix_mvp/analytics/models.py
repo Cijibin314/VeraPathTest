@@ -90,6 +90,7 @@ class Referral(models.Model):
         NO_SHOW = 'no_show', 'No Show'
         RESCHEDULED = 'rescheduled', 'Rescheduled'
         CANCELLED = 'cancelled', 'Cancelled'
+        REVIEW = 'review', 'Review'
 
     patient = models.ForeignKey(Patient, on_delete=models.PROTECT)
     provider = models.ForeignKey(Provider, on_delete=models.SET_NULL, null=True)
@@ -108,6 +109,7 @@ class Referral(models.Model):
     cancelled_at = models.DateTimeField(null=True, blank=True)
     athena_document_id = models.CharField(max_length=50, blank=True, null=True)
     athena_encounter_id = models.CharField(max_length=50, blank=True, null=True)
+    athena_department_id = models.CharField(max_length=50, blank=True, null=True)
     provider_note = models.TextField(blank=True)
     note_to_patient = models.TextField(blank=True)
     visit_summary = models.TextField(blank=True, null=True)

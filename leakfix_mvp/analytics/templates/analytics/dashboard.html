@@ -2,6 +2,53 @@
 {% block content %}
 
 <h2>Referral Metrics</h2>
+
+<form method="get" class="quarter-filter-form">
+  <div class="filter-group">
+    <label>Filter by Quarter:</label>
+    <input type="checkbox" id="q1" name="quarter" value="1" {% if '1' in selected_quarters %}checked{% endif %}> <label for="q1">Q1 (Jan-Mar)</label>
+    <input type="checkbox" id="q2" name="quarter" value="2" {% if '2' in selected_quarters %}checked{% endif %}> <label for="q2">Q2 (Apr-Jun)</label>
+    <input type="checkbox" id="q3" name="quarter" value="3" {% if '3' in selected_quarters %}checked{% endif %}> <label for="q3">Q3 (Jul-Sep)</label>
+    <input type="checkbox" id="q4" name="quarter" value="4" {% if '4' in selected_quarters %}checked{% endif %}> <label for="q4">Q4 (Oct-Dec)</label>
+    <button type="submit">Apply Filter</button>
+  </div>
+</form>
+
+<style>
+  .quarter-filter-form {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+  }
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  }
+  .filter-group label {
+    font-weight: bold;
+    margin-right: 5px;
+  }
+  .filter-group input[type="checkbox"] {
+    margin-right: 2px;
+  }
+  .filter-group button {
+    padding: 8px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .filter-group button:hover {
+    background-color: #0056b3;
+  }
+</style>
+
 <div class="tiles">
   <!-- Non-clickable metrics -->
   <div class="tile">
@@ -23,6 +70,11 @@
     <small>The % of referrals to in‑network providers</small>
     <div>{{ in_network_rate|floatformat:2 }}%</div>
   </a>
+
+  <div class="tile">
+    <strong>Out‑of‑network rate</strong>
+    <div>{{ out_network_rate|floatformat:2 }}%</div>
+  </div>
 
   <a href="{% url 'analytics:metric_detail' 'completion_rate' %}" class="tile tile-link">
     <strong>Completion rate</strong>
@@ -58,8 +110,8 @@
     <div>{{ median_days_ack|floatformat:2 }} days</div>
   </div>
   <div class="tile">
-    <strong>Median days to scheduling</strong>
-    <div>{{ median_days_schedule|floatformat:2 }} days</div>
+    <strong>Avg days to specialist</strong>
+    <div>{{ avg_days_to_specialist|floatformat:2 }} days</div>
   </div>
   <div class="tile">
     <strong>Average attempts per scheduled referral</strong>

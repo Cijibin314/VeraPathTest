@@ -656,7 +656,7 @@
 
         createReferralBtn.addEventListener('click', async () => {
             const selectedProviderOption = providerSelect.options[providerSelect.selectedIndex];
-            const providerNpi = selectedProviderOption ? selectedProviderOption.dataset.npi : '';
+            const providerId = selectedProviderOption ? selectedProviderOption.value : '';
             const patientId = patientIdInput.value;
             const orderTypeId = ordertypeIdInput.value;
             const patientInsuranceId = patientInsuranceSelect.value;
@@ -666,7 +666,7 @@
             const providerNote = document.getElementById('id_provider_note').value;
             const noteToPatient = document.getElementById('id_note_to_patient').value;
 
-            if (!patientId || !providerNpi || !orderTypeId) {
+            if (!patientId || !providerId || !orderTypeId) {
                 alert('Patient, Provider, and Referral Order Type are required.');
                 return;
             }
@@ -677,7 +677,7 @@
             try {
                 const referralOrderPayload = {
                     patient_id: patientId,
-                    provider_id: providerNpi,
+                    provider_id: providerId,
                     ordertypeid: orderTypeId,
                     patientinsuranceid: patientInsuranceId,
                     specialty: specialty,

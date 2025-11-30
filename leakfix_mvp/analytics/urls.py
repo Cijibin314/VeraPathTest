@@ -13,6 +13,7 @@ urlpatterns = [
     path('referrals/<int:pk>/api/', views.referral_detail_api, name='referral_detail_api'),
     path('referrals/<int:pk>/', views.referral_detail, name='referral_detail'),
     path('referrals/<int:pk>/status/<str:state>/', views.set_referral_status, name='set_referral_status'),
+    path('referrals/<int:pk>/update-status-ajax/', views.update_referral_status_ajax, name='update_referral_status_ajax'),
     path('referrals/<int:pk>/delete/', views.delete_referral, name='delete_referral'),
     path('invoices/', views.invoice_list, name='invoice_list'),
     path('invoices/<int:pk>/', views.invoice_detail, name='invoice_detail'),
@@ -30,6 +31,5 @@ urlpatterns = [
     path('patient-insurances/<str:patient_id>/', views.get_patient_insurances_ajax, name='get_patient_insurances_ajax'),
     path('management/', views.management, name='management'),
     path('management/stream-command/', views.stream_command_view, name='stream_command_view'),
-    path('management/sync-stream/', views.sync_stream_view, name='sync_stream_view'),
 
 ]
