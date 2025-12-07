@@ -1,0 +1,807 @@
+ordertypeid,name,cpt_code,work_rvu,non_fac_pe_rvu,fac_pe_rvu,mp_rvu
+257342,chiropractor referral,99213,1.3,1.35,0.57,0.1
+257360,allergist & immunologist referral,99213,1.3,1.35,0.57,0.1
+257361,anesthesiologist referral,99213,1.3,1.35,0.57,0.1
+257362,cardiologist referral,99203,1.6,1.61,0.69,0.16
+257363,dermatologist referral,99203,1.6,1.61,0.69,0.16
+257364,otolaryngologist referral,99213,1.3,1.35,0.57,0.1
+257365,"endocrinology, diabetes & metabolism specialist referral",99213,1.3,1.35,0.57,0.1
+257366,infertility reproductive endocrinology  referral,97112,0.5,0.48,0.48,0.01
+257367,gastroenterologist referral,99203,1.6,1.61,0.69,0.16
+257368,geriatric medicine referral,99213,1.3,1.35,0.57,0.1
+257369,hematologist referral,99213,1.3,1.35,0.57,0.1
+257370,infectious disease specialist referral,99000,0.0,0.0,0.0,0.0
+257371,joint replacement referral,99213,1.3,1.35,0.57,0.1
+257372,nephrologist referral,99213,1.3,1.35,0.57,0.1
+257373,neurologist referral,99213,1.3,1.35,0.57,0.1
+257375,obstetrician and gynecologist referral,99213,1.3,1.35,0.57,0.1
+257376,oncologist referral,99213,1.3,1.35,0.57,0.1
+257377,ophthalmologist referral,99213,1.3,1.35,0.57,0.1
+257378,orthopedic surgeon referral,97602,0.0,0.0,0.0,0.0
+257379,plastic surgeon referral,99203,1.6,1.61,0.69,0.16
+257380,podiatrist referral,99213,1.3,1.35,0.57,0.1
+257381,psychiatrist referral,99213,1.3,1.35,0.57,0.1
+257382,pulmonary disease specialist referral,99203,1.6,1.61,0.69,0.16
+257383,rheumatologist referral,99203,1.6,1.61,0.69,0.16
+257384,sleep medicine referral,97110,0.45,0.43,0.43,0.01
+257385,physical medicine and rehabilitation referral,97112,0.5,0.48,0.48,0.01
+257386,general surgeon referral,99213,1.3,1.35,0.57,0.1
+257387,urologist referral,99213,1.3,1.35,0.57,0.1
+257768,optometrist referral,99213,1.3,1.35,0.57,0.1
+257780,laparoscopic surgery referral,99213,1.3,1.35,0.57,0.1
+257782,nutritionist/dietitian referral,97602,0.0,0.0,0.0,0.0
+257786,pain management referral,99213,1.3,1.35,0.57,0.1
+257822,addiction psychiatry referral,99213,1.3,1.35,0.57,0.1
+257824,certified orthotist referral,97610,0.4,11.87,0.12,0.01
+257825,certified prosthetist referral,99213,1.3,1.35,0.57,0.1
+257826,certified prosthetist-orthotist referral,99213,1.3,1.35,0.57,0.1
+257827,clinical cardiac electrophysiologist referral,99213,1.3,1.35,0.57,0.1
+257828,colon & rectal surgeon referral,99213,1.3,1.35,0.57,0.1
+257829,diagnostic radiologist referral,99283,1.6,0.35,0.35,0.16
+257830,family medicine referral,99213,1.3,1.35,0.57,0.1
+257831,gynecologist referral,99213,1.3,1.35,0.57,0.1
+257832,hand surgeon referral,99213,1.3,1.35,0.57,0.1
+257833,hematologist/oncologist referral,99203,1.6,1.61,0.69,0.16
+257834,internal medicine referral,99213,1.3,1.35,0.57,0.1
+257835,interventional radiologist referral,99204,2.6,2.21,1.15,0.24
+257836,"plastic surgeon, head and neck referral",99213,1.3,1.35,0.57,0.1
+257837,medical oncologist referral,99213,1.3,1.35,0.57,0.1
+257839,neuropsychiatrist referral,99203,1.6,1.61,0.69,0.16
+257840,nuclear medicine specialist referral,99215,2.8,2.42,1.28,0.21
+257841,obstetrician referral,99213,1.3,1.35,0.57,0.1
+257842,occupational therapist referral,97110,0.45,0.43,0.43,0.01
+257843,oral surgery/dentist referral,99203,1.6,1.61,0.69,0.16
+257844,OSTEO. manipulative referral,98943,0.46,0.28,0.18,0.03
+257846,pathologist referral,99213,1.3,1.35,0.57,0.1
+257848,peripheral vas. dis./osteopathic referral,99203,1.6,1.61,0.69,0.16
+257849,peripheral vascular disease referral,97602,0.0,0.0,0.0,0.0
+257852,radiation oncologist referral,99203,1.6,1.61,0.69,0.16
+257853,radiation therapy referral,99203,1.6,1.61,0.69,0.16
+257854,radiologist referral,99203,1.6,1.61,0.69,0.16
+257855,surgical oncologist referral,99203,1.6,1.61,0.69,0.16
+257856,thoracic surgeon referral,99203,1.6,1.61,0.69,0.16
+257857,vascular surgeon referral,97602,0.0,0.0,0.0,0.0
+257869,audiologist referral,99202,0.93,1.16,0.4,0.07
+257874,pacemaker check consultation,99213,1.3,1.35,0.57,0.1
+260761,physical therapist referral,97110,0.45,0.43,0.43,0.01
+260813,hepatologist referral,99213,1.3,1.35,0.57,0.1
+261129,home health referral,99213,1.3,1.35,0.57,0.1
+261140,genetics referral,99203,1.6,1.61,0.69,0.16
+261164,speech therapy referral,92507,1.3,0.99,0.99,0.03
+261479,early intervention services provider referral,99213,1.3,1.35,0.57,0.1
+261638,breast surgery referral,99213,1.3,1.35,0.57,0.1
+261639,maternal & fetal medicine referral,99221,1.63,0.66,0.66,0.17
+262461,gynecologic oncologist referral,99213,1.3,1.35,0.57,0.1
+263281,diabetes management  referral,99214,1.92,1.8,0.83,0.15
+263959,oral appliance & consult referral,99213,1.3,1.35,0.57,0.1
+264968,neurotologist referral,99213,1.3,1.35,0.57,0.1
+265630,behavioral psychotherapy referral,90834,2.45,0.72,0.31,0.05
+266088,preoperative clearance consult,99213,1.3,1.35,0.57,0.1
+266847,functional capacity evaluation consult,99213,1.3,1.35,0.57,0.1
+267049,wound care referral,99213,1.3,1.35,0.57,0.1
+267050,hospice & palliative medicine referral,99213,1.3,1.35,0.57,0.1
+267103,cardiac rehabilitation provider referral,97605,0.55,0.74,0.17,0.01
+267104,cardio pulmonary referral,99213,1.3,1.35,0.57,0.1
+267231,pediatric cardiologist referral,99213,1.3,1.35,0.57,0.1
+267295,follow up visit referral,99213,1.3,1.35,0.57,0.1
+267317,urogynecologist referral,99213,1.3,1.35,0.57,0.1
+268647,breast evaluation referral,97610,0.4,11.87,0.12,0.01
+269078,urgent care/ER referral,99213,1.3,1.35,0.57,0.1
+269079,critical care medicine referral,99221,1.63,0.66,0.66,0.17
+269080,clinical & laboratory dermatological immunologist referral,99203,1.6,1.61,0.69,0.16
+269081,dermatopathologist referral,99202,0.93,1.16,0.4,0.07
+269082,pediatric dermatologist referral,99213,1.3,1.35,0.57,0.1
+269083,emergency medicine referral,99281,0.25,0.06,0.06,0.03
+269084,medical toxicologist referral,99213,1.3,1.35,0.57,0.1
+269085,pediatric emergency medicine referral,99283,1.6,0.35,0.35,0.16
+269086,sports medicine referral,99050,0.0,0.0,0.0,0.0
+269087,undersea & hyperbaric medicine referral,99213,1.3,1.35,0.57,0.1
+269088,adolescent medicine referral,99213,1.3,1.35,0.57,0.1
+269090,interventional cardiology referral,99213,1.3,1.35,0.57,0.1
+269091,transplant hepatologist referral,99213,1.3,1.35,0.57,0.1
+269092,medical geneticist referral,99213,1.3,1.35,0.57,0.1
+269093,clinical biochemical geneticist referral,99203,1.6,1.61,0.69,0.16
+269094,molecular genetic pathologist referral,99213,1.3,1.35,0.57,0.1
+269095,clinical geneticist referral,99203,1.6,1.61,0.69,0.16
+269096,clinical molecular geneticist referral,99203,1.6,1.61,0.69,0.16
+269097,neurological surgeon referral,99213,1.3,1.35,0.57,0.1
+269099,child abuse pediatrician referral,99213,1.3,1.35,0.57,0.1
+269101,neuromuscular medicine referral,97610,0.4,11.87,0.12,0.01
+269102,vascular neurologist referral,95700,0.0,0.0,0.0,0.0
+269103,orthopedic sports medicine referral,99213,1.3,1.35,0.57,0.1
+269104,pediatric otolaryngologist referral,99215,2.8,2.42,1.28,0.21
+269105,blood banking transfusion medicine referral,99203,1.6,1.61,0.69,0.16
+269107,cytopathologist referral,99213,1.3,1.35,0.57,0.1
+269125,child & adolescent psychiatrist referral,90792,4.16,1.49,0.74,0.16
+269127,pediatric surgeon referral,99203,1.6,1.61,0.69,0.16
+269131,mental health counselor referral,90792,4.16,1.49,0.74,0.16
+269241,infusion therapy center referral,99213,1.3,1.35,0.57,0.1
+269250,medical weight loss program referral,97110,0.45,0.43,0.43,0.01
+269319,counseling referral,90792,4.16,1.49,0.74,0.16
+269527,pediatric ophthalmologist referral,99215,2.8,2.42,1.28,0.21
+270206,yoga referral,97110,0.45,0.43,0.43,0.01
+270208,biofeedback therapy referral,97605,0.55,0.74,0.17,0.01
+270646,independent medical evaluation,99215,2.8,2.42,1.28,0.21
+270654,skilled nursing facility referral,99213,1.3,1.35,0.57,0.1
+271129,dentist referral,99203,1.6,1.61,0.69,0.16
+271496,manual therapy referral,97140,0.43,0.4,0.4,0.01
+272586,occupational medicine referral,99213,1.3,1.35,0.57,0.1
+272610,Mohs-micrographic surgeon referral,97602,0.0,0.0,0.0,0.0
+272643,orthopedic spine surgeon referral,99213,1.3,1.35,0.57,0.1
+272654,lymphedema consult,97602,0.0,0.0,0.0,0.0
+272659,social worker referral,90791,3.84,1.22,0.48,0.1
+272842,assisted living facility referral,99213,1.3,1.35,0.57,0.1
+272843,personal home care referral,99203,1.6,1.61,0.69,0.16
+272955,pediatric rheumatologist referral,99203,1.6,1.61,0.69,0.16
+273130,acupuncturist referral,97124,0.35,0.56,0.56,0.01
+273504,OMT referral,97110,0.45,0.43,0.43,0.01
+273506,continuous glucose monitoring system referral,73610,0.17,0.9,0.9,0.02
+273506,continuous glucose monitoring system referral,73610,0.0,0.83,0.83,0.01
+273506,continuous glucose monitoring system referral,73610,0.17,0.07,0.07,0.01
+273571,educator referral for pump training,97602,0.0,0.0,0.0,0.0
+273740,pelvic floor therapy referral,97140,0.43,0.4,0.4,0.01
+273821,wound care information,99203,1.6,1.61,0.69,0.16
+273838,laser hair removal referral,17000,0.61,1.39,1.0,0.05
+273839,esthetician referral,99203,1.6,1.61,0.69,0.16
+273865,vestibular therapy referral,97112,0.5,0.48,0.48,0.01
+274477,laser tattoo removal referral,17000,0.61,1.39,1.0,0.05
+274478,DME evaluation referral,99211,0.18,0.51,0.07,0.01
+274618,burn referral,99213,1.3,1.35,0.57,0.1
+274619,enterostomy referral,97602,0.0,0.0,0.0,0.0
+274681,medical nutrition therapy referral,97602,0.0,0.0,0.0,0.0
+275234,genetic counselor referral,99000,0.0,0.0,0.0,0.0
+275236,labor and delivery referral,59400,37.0,25.76,25.76,10.06
+275472,HBTS home based therapeutic services,97140,0.43,0.4,0.4,0.01
+275473,pass personal assistance services & support,97156,0.0,0.0,0.0,0.0
+275687,UCSF hair clinic referral,99213,1.3,1.35,0.57,0.1
+275688,UCSF environmental derm referral,99213,1.3,1.35,0.57,0.1
+275802,bariatric medicine referral,99213,1.3,1.35,0.57,0.1
+275855,insulin pump referral,99213,1.3,1.35,0.57,0.1
+275895,pediatric craniofacial reconstruction referral,99205,3.5,2.83,1.59,0.34
+275896,pediatric dentist referral,99213,1.3,1.35,0.57,0.1
+275897,pediatric endocrinologist referral,99213,1.3,1.35,0.57,0.1
+275898,pediatric gastroenterologist referral,99213,1.3,1.35,0.57,0.1
+275899,pediatric genetics referral,95940,0.6,0.32,0.32,0.04
+275900,pediatric gynecologist referral,99215,2.8,2.42,1.28,0.21
+275901,pediatric hematologist/oncologist referral,99213,1.3,1.35,0.57,0.1
+275902,pediatric metabolic genetics referral,99213,1.3,1.35,0.57,0.1
+275904,pediatric pulmonologist referral,99213,1.3,1.35,0.57,0.1
+275905,pediatric radiologist referral,99203,1.6,1.61,0.69,0.16
+276041,orthopedic foot/ankle surgeon referral,99213,1.3,1.35,0.57,0.1
+276050,perinatal services consult,99234,2.0,0.74,0.74,0.16
+276066,amniocentesis and genetic counseling,99213,1.3,1.35,0.57,0.1
+276067,chorionic villi sampling and genetic counseling,99213,1.3,1.35,0.57,0.1
+276353,icd check,99213,1.3,1.35,0.57,0.1
+276529,neuropsychologist referral,97602,0.0,0.0,0.0,0.0
+276541,phototherapy referral,99215,2.8,2.42,1.28,0.21
+276658,coumadin clinic referral,99213,1.3,1.35,0.57,0.1
+276910,pulmonologist referral,99213,1.3,1.35,0.57,0.1
+277090,pulmonary rehab referral,99213,1.3,1.35,0.57,0.1
+277101,medical fitness referral,99213,1.3,1.35,0.57,0.1
+277102,athlete conditioning referral,99213,1.3,1.35,0.57,0.1
+277284,HIV counseling referral,99403,1.46,1.02,0.57,0.08
+277580,melanoma/lymphoma clinic referral,99203,1.6,1.61,0.69,0.16
+277687,urogynecology physical therapy referral,97602,0.0,0.0,0.0,0.0
+277688,sexual medicine/vulvodynia referral,99203,1.6,1.61,0.69,0.16
+277956,"blood transfusion, PRBC",99203,1.6,1.61,0.69,0.16
+277957,gynecologic surgery referral,99213,1.3,1.35,0.57,0.1
+278025,replacement of implantable pulse generator referral,99213,1.3,1.35,0.57,0.1
+278114,Pain Medicine,97602,0.0,0.0,0.0,0.0
+278441,programming of deep brain stimulator,1999,0.0,0.0,0.0,0.0
+278589,visible tumor referral,99203,1.6,1.61,0.69,0.16
+278590,pigmented lesion referral,99203,1.6,1.61,0.69,0.16
+278591,high risk skin cancer referral,99203,1.6,1.61,0.69,0.16
+278592,CKD referral,99203,1.6,1.61,0.69,0.16
+279403,central auditory function testing referral,92557,0.6,0.47,0.33,0.02
+279404,hearing screening referral,92537,0.6,0.55,0.55,0.02
+279404,hearing screening referral,92537,0.0,0.25,0.25,0.01
+279404,hearing screening referral,92537,0.6,0.3,0.3,0.01
+280140,pediatric urologist referral,99213,1.3,1.35,0.57,0.1
+280371,radioiodine I-131 ablation therapy referral,77022,0.0,0.0,0.0,0.0
+280371,radioiodine I-131 ablation therapy referral,77022,0.0,0.0,0.0,0.0
+280371,radioiodine I-131 ablation therapy referral,77022,4.24,1.44,1.44,0.24
+280624,electrodiagnostic specialist referral,99213,1.3,1.35,0.57,0.1
+280636,public health services provider referral,99000,0.0,0.0,0.0,0.0
+280752,cardiac exercise physiologist referral,99213,1.3,1.35,0.57,0.1
+285517,visiting nurse referral,99203,1.6,1.61,0.69,0.16
+286517,spine center referral,99213,1.3,1.35,0.57,0.1
+286538,overnight pulse oximetry referral,94760,0.0,0.1,0.1,0.01
+286777,videostroboscopy referral,99213,1.3,1.35,0.57,0.1
+288038,hair transplant referral,97140,0.43,0.4,0.4,0.01
+288337,orthopedic oncology referral,99213,1.3,1.35,0.57,0.1
+288742,medical massage,97140,0.43,0.4,0.4,0.01
+289469,pharmacy clinic,99213,1.3,1.35,0.57,0.1
+289497,early childhood intervention referral,99406,0.24,0.17,0.09,0.02
+289498,child study center referral,99215,2.8,2.42,1.28,0.21
+289620,nerve conduction referral,95810,2.5,16.07,16.07,0.24
+289620,nerve conduction referral,95810,0.0,15.18,15.18,0.16
+289620,nerve conduction referral,95810,2.5,0.89,0.89,0.08
+289663,pediatric infectious disease referral,99203,1.6,1.61,0.69,0.16
+289664,pediatric nephrologist referral,99203,1.6,1.61,0.69,0.16
+289665,pediatric orthopedic referral,97602,0.0,0.0,0.0,0.0
+289666,pediatric plastic surgery referral,99213,1.3,1.35,0.57,0.1
+289667,auditory brainstem response referral,92597,1.26,0.9,0.9,0.04
+289677,substance abuse rehabilitation referral,90792,4.16,1.49,0.74,0.16
+289818,development evaluation referral,97110,0.45,0.43,0.43,0.01
+289868,day medicine referral,99213,1.3,1.35,0.57,0.1
+290258,home visiting referral,99213,1.3,1.35,0.57,0.1
+290537,vitalstim therapy referral,97112,0.5,0.48,0.48,0.01
+291900,transplant referral,99204,2.6,2.21,1.15,0.24
+292881,neurocognitive referral,92507,1.3,0.99,0.99,0.03
+292882,pre-op anesthesia evaluation,99215,2.8,2.42,1.28,0.21
+293060,CKD IV-iron referral,99203,1.6,1.61,0.69,0.16
+293061,CKD esa referral,99203,1.6,1.61,0.69,0.16
+293064,help me grow referral,97110,0.45,0.43,0.43,0.01
+293068,EGD referral,45330,0.84,4.6,0.74,0.13
+293197,naturopath referral,99203,1.6,1.61,0.69,0.16
+293198,plan of care referral,99215,2.8,2.42,1.28,0.21
+293253,telephone counseling for smoking cessation,97802,0.53,0.56,0.43,0.01
+293639,vein specialist referral,97602,0.0,0.0,0.0,0.0
+293765,procedure clinic,99213,1.3,1.35,0.57,0.1
+293787,dialysis education referral,99213,1.3,1.35,0.57,0.1
+293788,authorization request,99203,1.6,1.61,0.69,0.16
+293990,patient navigator referral,99203,1.6,1.61,0.69,0.16
+294262,clinical therapist referral,97154,0.0,0.0,0.0,0.0
+294263,obesity/metabolism referral,99213,1.3,1.35,0.57,0.1
+294336,davita empower program referral,99213,1.3,1.35,0.57,0.1
+294880,renal transplant evaluation referral,99213,1.3,1.35,0.57,0.1
+294980,surgery center referral,99213,1.3,1.35,0.57,0.1
+295460,dialysis referral,99213,1.3,1.35,0.57,0.1
+295603,endocrinology referral,99213,1.3,1.35,0.57,0.1
+295645,primary care provider referral,99213,1.3,1.35,0.57,0.1
+295885,oral & maxillofacial referral,99203,1.6,1.61,0.69,0.16
+295926,impairment rating referral,97602,0.0,0.0,0.0,0.0
+295965,diabetic ophthalmology referral,99213,1.3,1.35,0.57,0.1
+296647,healing touch referral,97610,0.4,11.87,0.12,0.01
+296965,prepare for surgery counseling,99213,1.3,1.35,0.57,0.1
+297261,ketogenic diet initiation,99213,1.3,1.35,0.57,0.1
+297395,referral to smoking quit line,99214,1.92,1.8,0.83,0.15
+298187,congestive heart failure clinic,99215,2.8,2.42,1.28,0.21
+298886,women's health referral,99213,1.3,1.35,0.57,0.1
+298906,chronic disease management referral,99213,1.3,1.35,0.57,0.1
+299165,skilled nursing referral,99213,1.3,1.35,0.57,0.1
+299306,hospitalist referral,99221,1.63,0.66,0.66,0.17
+299825,arizona early intervention program referral,99203,1.6,1.61,0.69,0.16
+299866,guided nurse referral,99213,1.3,1.35,0.57,0.1
+300085,immunization referral,97140,0.43,0.4,0.4,0.01
+300086,referral for smoking cessation counseling,97140,0.43,0.4,0.4,0.01
+300926,pediatric neurologist referral,99215,2.8,2.42,1.28,0.21
+301026,addiction medicine referral,99213,1.3,1.35,0.57,0.1
+302466,urologic oncology referral,99203,1.6,1.61,0.69,0.16
+302805,neuro-ophthalmologist referral,99213,1.3,1.35,0.57,0.1
+302825,hypolipidemia referral,99213,1.3,1.35,0.57,0.1
+302826,hyperlipidemia referral,99213,1.3,1.35,0.57,0.1
+303765,stroke clinic referral,97602,0.0,0.0,0.0,0.0
+304085,musculoskeletal treatment referral,99213,1.3,1.35,0.57,0.1
+304669,pulmonary hypertension referral,99213,1.3,1.35,0.57,0.1
+305325,augmentative and alternative communication (aac) referral,92507,1.3,0.99,0.99,0.03
+305385,movement therapy referral,97610,0.4,11.87,0.12,0.01
+305386,epileptologist referral,99204,2.6,2.21,1.15,0.24
+305694,senior daycare referral,99213,1.3,1.35,0.57,0.1
+306145,energy medicine referral,99203,1.6,1.61,0.69,0.16
+306326,diabetes educator referral,99453,0.0,0.59,0.59,0.02
+306685,neurological rehabilitation and balance referral,97112,0.5,0.48,0.48,0.01
+307105,diabetes self management training,97140,0.43,0.4,0.4,0.01
+307145,palliative medicine referral,97140,0.43,0.4,0.4,0.01
+308907,immunologist referral,99213,1.3,1.35,0.57,0.1
+309190,heart transplant referral,99213,1.3,1.35,0.57,0.1
+309887,ambulatory services referral,99213,1.3,1.35,0.57,0.1
+309949,multiple sclerosis specialist,97112,0.5,0.48,0.48,0.01
+311087,lipid clinic referral,99213,1.3,1.35,0.57,0.1
+311285,patient health education referral,99486,1.3,0.51,0.51,0.07
+311623,hippotherapy,97602,0.0,0.0,0.0,0.0
+311665,music therapist referral,97112,0.5,0.48,0.48,0.01
+311666,habilitation specialist referral,99213,1.3,1.35,0.57,0.1
+311667,respite care facility referral,99221,1.63,0.66,0.66,0.17
+312114,"ophthalmology, retina specialist referral",99203,1.6,1.61,0.69,0.16
+312625,movement disorder specialist,99213,1.3,1.35,0.57,0.1
+312786,gastroenterology surgery referral,99203,1.6,1.61,0.69,0.16
+312787,genetic oncology referral,99203,1.6,1.61,0.69,0.16
+312827,child life department,97112,0.5,0.48,0.48,0.01
+313125,shared medical visit,99231,1.0,0.38,0.38,0.08
+313206,vascular access team,97605,0.55,0.74,0.17,0.01
+313745,neurointerventionalist referral,95717,2.0,1.05,1.0,0.16
+314312,synagis referral,99203,1.6,1.61,0.69,0.16
+315325,functional medicine evaluation,99203,1.6,1.61,0.69,0.16
+315606,epilepsy monitoring unit,99213,1.3,1.35,0.57,0.1
+316135,youth health services,99213,1.3,1.35,0.57,0.1
+316406,applied behavior analysis therapy,97156,0.0,0.0,0.0,0.0
+316546,heart valve clinic,99213,1.3,1.35,0.57,0.1
+317205,reproductive endocrinologist referral,99213,1.3,1.35,0.57,0.1
+317386,concussion clinic referral,99213,1.3,1.35,0.57,0.1
+318066,endocrine surgery referral,99213,1.3,1.35,0.57,0.1
+318128,oncology patient navigator,99213,1.3,1.35,0.57,0.1
+318129,orthodontist referral,99213,1.3,1.35,0.57,0.1
+320285,breast cancer referral,99213,1.3,1.35,0.57,0.1
+323986,hospice care facility referral,99213,1.3,1.35,0.57,0.1
+325487,vascular diagnostic test,93930,0.8,4.99,4.99,0.11
+325487,vascular diagnostic test,93930,0.0,4.74,4.74,0.04
+325487,vascular diagnostic test,93930,0.8,0.25,0.25,0.07
+332645,physical therapist hand referral,97110,0.45,0.43,0.43,0.01
+334785,hospital referral,99221,1.63,0.66,0.66,0.17
+335370,chiropractic and massage referral,97140,0.43,0.4,0.4,0.01
+335648,care management referral,99213,1.3,1.35,0.57,0.1
+336765,permanent partial disability rating,97110,0.45,0.43,0.43,0.01
+336767,weight loss study,99213,1.3,1.35,0.57,0.1
+336985,hypertension study referral,99203,1.6,1.61,0.69,0.16
+337127,asthma education referral,99213,1.3,1.35,0.57,0.1
+337128,vocational training/counseling,97150,0.29,0.24,0.24,0.01
+338709,resource advocate referral,99050,0.0,0.0,0.0,0.0
+338786,breast center referral,59400,37.0,25.76,25.76,10.06
+339225,blood pressure referral,99203,1.6,1.61,0.69,0.16
+339226,bmi referral,97602,0.0,0.0,0.0,0.0
+339385,pediatric allergist referral,97140,0.43,0.4,0.4,0.01
+339877,referral to the american cancer society,99203,1.6,1.61,0.69,0.16
+339878,genetic testing referral,99203,1.6,1.61,0.69,0.16
+340348,multi-disciplinary evaluation,99213,1.3,1.35,0.57,0.1
+340349,functional restoration program,97606,0.6,0.94,0.18,0.01
+340352,therapy evaluation,97112,0.5,0.48,0.48,0.01
+340918,cancer support services,99203,1.6,1.61,0.69,0.16
+341210,pediatric physical therapist referral,97110,0.45,0.43,0.43,0.01
+341211,pediatric occupational therapist referral,97113,0.48,0.64,0.64,0.01
+341363,pediatric speech therapy,97110,0.45,0.43,0.43,0.01
+341884,rhinology referral,99203,1.6,1.61,0.69,0.16
+341886,head and neck referral,99213,1.3,1.35,0.57,0.1
+341887,laryngology referral,99213,1.3,1.35,0.57,0.1
+342382,support group referral,99213,1.3,1.35,0.57,0.1
+342521,ambulatory surgical center referral,99215,2.8,2.42,1.28,0.21
+343433,TMJ referral,99203,1.6,1.61,0.69,0.16
+343502,anticoagulation therapy referral,99213,1.3,1.35,0.57,0.1
+343565,neo adjuvant chemotherapy,99213,1.3,1.35,0.57,0.1
+343607,medication assistance program,99213,1.3,1.35,0.57,0.1
+343846,"women, infant and children's program referral",99213,1.3,1.35,0.57,0.1
+343905,gait training referral,97116,0.45,0.43,0.43,0.01
+343908,outpatient detox,99213,1.3,1.35,0.57,0.1
+343927,medication education referral,99213,1.3,1.35,0.57,0.1
+344017,CKD stage 3 education,99213,1.3,1.35,0.57,0.1
+344018,CKD stage 4 education,99214,1.92,1.8,0.83,0.15
+346266,laser treatment,69220,0.83,1.42,0.6,0.13
+346326,community care referral,99213,1.3,1.35,0.57,0.1
+346421,stress management referral,97124,0.35,0.56,0.56,0.01
+347054,inpatient detoxification program referral,99215,2.8,2.42,1.28,0.21
+347390,lung cancer referral,99213,1.3,1.35,0.57,0.1
+347559,substance abuse referral,90837,3.63,1.06,0.45,0.08
+347563,osteopathic referral,99213,1.3,1.35,0.57,0.1
+347571,lead poisoning referral,90853,0.65,0.2,0.08,0.02
+347572,tuberculosis contact referral,99214,1.92,1.8,0.83,0.15
+347573,rabies investigation referral,99203,1.6,1.61,0.69,0.16
+347718,bereavement counselor referral,97156,0.0,0.0,0.0,0.0
+347728,home telemonitoring services,99091,1.1,0.43,0.43,0.07
+348141,autism clinic referral,99203,1.6,1.61,0.69,0.16
+348610,spina bifida clinic referral,99203,1.6,1.61,0.69,0.16
+348611,down syndrome clinic referral,99215,2.8,2.42,1.28,0.21
+348612,nicu follow up clinic referral,99213,1.3,1.35,0.57,0.1
+348613,cleft lip/palate clinic referral,99203,1.6,1.61,0.69,0.16
+348701,muscular dystrophy clinic referral,97602,0.0,0.0,0.0,0.0
+348765,peritoneal dialysis catheter assessment referral,99213,1.3,1.35,0.57,0.1
+348766,av fistula assessment referral,99203,1.6,1.61,0.69,0.16
+348912,eating disorder therapy referral,90837,3.63,1.06,0.45,0.08
+349254,clinical review board referral,99221,1.63,0.66,0.66,0.17
+349294,imaging interpretation consult,99283,1.6,0.35,0.35,0.16
+349321,lifelink referral,99213,1.3,1.35,0.57,0.1
+349443,cerebral palsy clinic referral,99213,1.3,1.35,0.57,0.1
+349523,hormone imbalance referral,97602,0.0,0.0,0.0,0.0
+349921,home footcare,97602,0.0,0.0,0.0,0.0
+350430,gestational diabetes education referral,99215,2.8,2.42,1.28,0.21
+350542,SDoH referral: Meals on Wheels program,99213,1.3,1.35,0.57,0.1
+350562,urgent care center referral,99213,1.3,1.35,0.57,0.1
+350563,urgent care center transfer,99281,0.25,0.06,0.06,0.03
+350906,home modifications contractor referral,99213,1.3,1.35,0.57,0.1
+350907,bathroom modification referral,97110,0.45,0.43,0.43,0.01
+351414,craniofacial referral,99203,1.6,1.61,0.69,0.16
+351632,functional assessment referral,97116,0.45,0.43,0.43,0.01
+352031,behavioral health coaching referral,97156,0.0,0.0,0.0,0.0
+353402,infusion referral new patient,99202,0.93,1.16,0.4,0.07
+353403,infusion referral treatment change,99213,1.3,1.35,0.57,0.1
+353985,facial plastic surgeon referral,99203,1.6,1.61,0.69,0.16
+354340,surgical epilepsy clinic referral,99215,2.8,2.42,1.28,0.21
+354650,pediatric neuropsychology referral,99215,2.8,2.42,1.28,0.21
+354651,residential treatment facility referral,99213,1.3,1.35,0.57,0.1
+354922,ostomy care referral,99213,1.3,1.35,0.57,0.1
+355224,tai chi referral,97112,0.5,0.48,0.48,0.01
+355348,balance training referral,97112,0.5,0.48,0.48,0.01
+355368,driving evaluation referral,97112,0.5,0.48,0.48,0.01
+355622,structured intensive multidisciplinary program referral,99487,1.81,2.13,0.75,0.13
+355623,interventional pain medicine specialist referral,97602,0.0,0.0,0.0,0.0
+356308,transition pediatric to adult care referral,99213,1.3,1.35,0.57,0.1
+356319,telehealth video consult,99213,1.3,1.35,0.57,0.1
+356392,provider/provider telehealth consult,99221,1.63,0.66,0.66,0.17
+356393,provider/provider/patient telehealth consult,99213,1.3,1.35,0.57,0.1
+377366,vagus nerve stimulation implant referral,97602,0.0,0.0,0.0,0.0
+377437,eye care referral,99213,1.3,1.35,0.57,0.1
+377741,foot/ankle referral,99213,1.3,1.35,0.57,0.1
+377805,pulmonary transplant referral,99213,1.3,1.35,0.57,0.1
+377941,motion/gait analysis,97602,0.0,0.0,0.0,0.0
+378072,behavioral health referral,90792,4.16,1.49,0.74,0.16
+378286,tracheostomy/ventilator clinic referral,99213,1.3,1.35,0.57,0.1
+378288,cystic fibrosis clinic referral,99050,0.0,0.0,0.0,0.0
+385921,remote care management referral,99213,1.3,1.35,0.57,0.1
+386571,pre-op spine program,99215,2.8,2.42,1.28,0.21
+386663,blood draw referral,99203,1.6,1.61,0.69,0.16
+386818,intense cardiac rehab referral,99213,1.3,1.35,0.57,0.1
+386841,endodontist referral,99202,0.93,1.16,0.4,0.07
+386899,mid-level referral,99213,1.3,1.35,0.57,0.1
+387009,hot tub referral,97140,0.43,0.4,0.4,0.01
+387547,neuro-oncology referral,99213,1.3,1.35,0.57,0.1
+387599,physical performance evaluation referral,99215,2.8,2.42,1.28,0.21
+387626,oncology case management referral,99213,1.3,1.35,0.57,0.1
+387636,infant development referral,99401,0.48,0.64,0.19,0.03
+387727,autonomic dysfunction referral,99213,1.3,1.35,0.57,0.1
+387728,brace referral,97602,0.0,0.0,0.0,0.0
+387730,serial casting referral,97034,0.21,0.2,0.2,0.01
+387933,ayurveda referral,97112,0.5,0.48,0.48,0.01
+388164,population health referral,99213,1.3,1.35,0.57,0.1
+388341,CIED remote monitoring,99213,1.3,1.35,0.57,0.1
+388543,lice treatment referral,99213,1.3,1.35,0.57,0.1
+388590,health partner referral,99213,1.3,1.35,0.57,0.1
+388780,education assistance referral,99417,0.61,0.27,0.24,0.04
+388782,weight management referral,97110,0.45,0.43,0.43,0.01
+389108,pediatric bariatric medicine referral,99215,2.8,2.42,1.28,0.21
+389683,pediatric neurosurgery referral,97605,0.55,0.74,0.17,0.01
+390531,allergist referral,99213,1.3,1.35,0.57,0.1
+390851,exercise physiologist referral,97610,0.4,11.87,0.12,0.01
+390903,clinical sleep educator,99215,2.8,2.42,1.28,0.21
+390969,structural heart clinic referral,99203,1.6,1.61,0.69,0.16
+391061,comprehensive child and family therapy referral,97156,0.0,0.0,0.0,0.0
+391063,hepatitis clinic referral,99347,0.9,0.41,0.41,0.04
+391077,preparing for surgery class,99213,1.3,1.35,0.57,0.1
+391311,group counseling referral,97156,0.0,0.0,0.0,0.0
+391637,medication management referral,99213,1.3,1.35,0.57,0.1
+391650,walk-in clinic,99213,1.3,1.35,0.57,0.1
+391652,mobility referral,97610,0.4,11.87,0.12,0.01
+391876,osteopathic manipulation referral,97140,0.43,0.4,0.4,0.01
+391960,lung transplant referral,99213,1.3,1.35,0.57,0.1
+391971,breastfeeding clinic referral,99203,1.6,1.61,0.69,0.16
+393123,diet/nutrition education referral,97610,0.4,11.87,0.12,0.01
+393393,peritoneal dialysis catheter placement referral,99203,1.6,1.61,0.69,0.16
+394069,comprehensive vestibular diagnostic evaluation referral,92570,0.55,0.39,0.29,0.02
+394132,vocational rehabilitation services referral,97110,0.45,0.43,0.43,0.01
+395504,free/reduced care referral,99213,1.3,1.35,0.57,0.1
+395815,intensive outpatient therapy program referral,97150,0.29,0.24,0.24,0.01
+396128,Vascular Anomalies Referral,99203,1.6,1.61,0.69,0.16
+396307,senior services provider referral,99203,1.6,1.61,0.69,0.16
+396567,lifestyle management referral,99406,0.24,0.17,0.09,0.02
+396568,cognitive behavioral therapy referral,90837,3.63,1.06,0.45,0.08
+396747,bone health referral,97602,0.0,0.0,0.0,0.0
+397177,bariatric surgery referral,99213,1.3,1.35,0.57,0.1
+398389,Worker's Comp Attendant and Custodial Care Referral,99213,1.3,1.35,0.57,0.1
+398537,cardiovascular genetics referral,95990,0.0,2.57,2.57,0.04
+399601,hypertension clinic referral,99213,1.3,1.35,0.57,0.1
+399638,financial counseling referral,99203,1.6,1.61,0.69,0.16
+399772,group home referral,99213,1.3,1.35,0.57,0.1
+399773,foster care agency referral,99203,1.6,1.61,0.69,0.16
+400532,behavior analysis referral,99213,1.3,1.35,0.57,0.1
+400534,transgender health referral,97140,0.43,0.4,0.4,0.01
+400535,advance care planning facilitator referral,99456,0.0,0.0,0.0,0.0
+400624,Aerodigestive Clinic Referral,99213,1.3,1.35,0.57,0.1
+401010,liver transplant referral,99213,1.3,1.35,0.57,0.1
+401370,referral - prescription monitoring,99203,1.6,1.61,0.69,0.16
+408067,pediatric audiologist referral,92557,0.6,0.47,0.33,0.02
+408309,literacy program referral,92507,1.3,0.99,0.99,0.03
+408394,pediatric sleep medicine referral,99215,2.8,2.42,1.28,0.21
+408395,obesity counseling referral,97167,1.54,1.53,1.53,0.04
+409459,orthosis referral,97602,0.0,0.0,0.0,0.0
+409567,post-exposure evaluation,99213,1.3,1.35,0.57,0.1
+409630,diabetic nutrition education referral,99213,1.3,1.35,0.57,0.1
+409720,adult congenital heart disease clinic referral,97605,0.55,0.74,0.17,0.01
+410346,mental health clinic referral,99213,1.3,1.35,0.57,0.1
+410348,pediatric language skills education referral,96125,1.7,1.33,1.33,0.05
+410547,laser eye surgery referral,99204,2.6,2.21,1.15,0.24
+410747,bladder clinic referral,99214,1.92,1.8,0.83,0.15
+410888,patient-centered medical home referral,99213,1.3,1.35,0.57,0.1
+410941,health home referral,99213,1.3,1.35,0.57,0.1
+410942,pediatric health home referral,99215,2.8,2.42,1.28,0.21
+410943,pediatric home health referral,99213,1.3,1.35,0.57,0.1
+421457,continuity of care referral,99213,1.3,1.35,0.57,0.1
+421490,diabetic treatment center referral,99215,2.8,2.42,1.28,0.21
+421582,vestibular disorder referral,99213,1.3,1.35,0.57,0.1
+421690,language therapy referral,92542,0.48,0.36,0.36,0.02
+421690,language therapy referral,92542,0.0,0.11,0.11,0.01
+421690,language therapy referral,92542,0.48,0.25,0.25,0.01
+421704,supervised exercise therapy referral,97110,0.45,0.43,0.43,0.01
+421846,restorative dental referral,99203,1.6,1.61,0.69,0.16
+421949,peripheral artery disease rehabilitation referral,97610,0.4,11.87,0.12,0.01
+422036,foot care referral,99213,1.3,1.35,0.57,0.1
+422093,telemedicine consult,99213,1.3,1.35,0.57,0.1
+422315,prescribed pediatric extended care,99215,2.8,2.42,1.28,0.21
+422328,CLINICAL HEALTH PSYCHOLOGY/PAIN PSYCHOLOGY REFERRAL,90837,3.63,1.06,0.45,0.08
+422377,cardio-oncology referral,99213,1.3,1.35,0.57,0.1
+423096,home health: wound care nurse referral,99213,1.3,1.35,0.57,0.1
+423128,Physics Consult for Interoperative Radiation Therapy,97602,0.0,0.0,0.0,0.0
+423191,In Vitro Fertilization Consult,97112,0.5,0.48,0.48,0.01
+423192,COPD Education Referral,99213,1.3,1.35,0.57,0.1
+423424,Environmental clinic referral,99213,1.3,1.35,0.57,0.1
+423566,adult substance abuse intensive outpatient treatment referral,90792,4.16,1.49,0.74,0.16
+423567,child substance abuse intensive outpatient treatment referral,99213,1.3,1.35,0.57,0.1
+423569,child crisis stabilization referral,99215,2.8,2.42,1.28,0.21
+423570,adult substance abuse group referral,90839,3.43,1.06,0.5,0.1
+423571,child substance abuse group referral,99395,1.75,1.65,0.69,0.12
+423572,adult crisis stabilization after care group referral,99223,3.5,1.39,1.39,0.28
+423632,Pulmonary nodule clinic referral,99204,2.6,2.21,1.15,0.24
+423648,medication referral,99213,1.3,1.35,0.57,0.1
+424040,ocular oncology referral,99203,1.6,1.61,0.69,0.16
+424043,wellness and risk reduction program referral,99291,4.5,3.27,1.42,0.44
+424082,diabetes self-management education and support referral,99406,0.24,0.17,0.09,0.02
+424190,psychosocial rehabilitation referral,97150,0.29,0.24,0.24,0.01
+424335,nursing consult,99221,1.63,0.66,0.66,0.17
+424980,partial hospital program referral,99213,1.3,1.35,0.57,0.1
+426162,lipidology referral,99203,1.6,1.61,0.69,0.16
+426257,Ryan White program referral,99202,0.93,1.16,0.4,0.07
+426499,endovascular referral,99214,1.92,1.8,0.83,0.15
+426500,vascular referral,97602,0.0,0.0,0.0,0.0
+426677,infectious disease clinic referral,99204,2.6,2.21,1.15,0.24
+427065,referral to maternity services,99221,1.63,0.66,0.66,0.17
+427137,physiotherapy referral,97110,0.45,0.43,0.43,0.01
+427307,ENT surgery referral,99213,1.3,1.35,0.57,0.1
+427662,referral to play therapy,97156,0.0,0.0,0.0,0.0
+427916,certified nurse midwife referral,99213,1.3,1.35,0.57,0.1
+428396,breast health navigator referral,99203,1.6,1.61,0.69,0.16
+429122,sexual medicine referral,99213,1.3,1.35,0.57,0.1
+430104,mobile care nursing services referral,99213,1.3,1.35,0.57,0.1
+430498,art therapist referral,97150,0.29,0.24,0.24,0.01
+438927,intermediate care facility referral,99213,1.3,1.35,0.57,0.1
+438928,custodial care facility referral,99213,1.3,1.35,0.57,0.1
+439020,community health worker referral,99203,1.6,1.61,0.69,0.16
+439155,nutritionist referral,99213,1.3,1.35,0.57,0.1
+439646,female pelvic medicine & reconstructive surgeon referral,99213,1.3,1.35,0.57,0.1
+439685,SDoH referral: adult day care center,99213,1.3,1.35,0.57,0.1
+439686,athletic trainer referral,97602,0.0,0.0,0.0,0.0
+439687,behavior analyst referral,96127,0.0,0.13,0.13,0.01
+439688,behavioral health counselor referral,90792,4.16,1.49,0.74,0.16
+439689,case manager/care coordinator referral,99213,1.3,1.35,0.57,0.1
+439690,child substance use treatment facility referral,99213,1.3,1.35,0.57,0.1
+439691,clinical child & adolescent psychologist referral,97156,0.0,0.0,0.0,0.0
+439692,clinical health psychologist referral,97124,0.35,0.56,0.56,0.01
+439693,cognitive & behavioral psychologist referral,90792,4.16,1.49,0.74,0.16
+439694,developmental behavioral pediatrics referral,99213,1.3,1.35,0.57,0.1
+439695,exercise & sports psychologist referral,97150,0.29,0.24,0.24,0.01
+439696,health educator referral,99483,3.84,4.12,1.64,0.27
+439697,in home supportive care provider referral,99213,1.3,1.35,0.57,0.1
+439698,independent medical examiner referral,99215,2.8,2.42,1.28,0.21
+439699,lactation consultant referral,99203,1.6,1.61,0.69,0.16
+439700,massage therapist referral,97140,0.43,0.4,0.4,0.01
+439702,multi-specialty clinic referral,99213,1.3,1.35,0.57,0.1
+439703,naprapath referral,99213,1.3,1.35,0.57,0.1
+439705,occupational environmental medicine referral,99203,1.6,1.61,0.69,0.16
+439706,"occupational therapist, ergonomics referral",97110,0.45,0.43,0.43,0.01
+439707,"occupational therapist, feeding, eating & swallowing referral",97110,0.45,0.43,0.43,0.01
+439709,"occupational therapist, neurorehabilitation referral",97112,0.5,0.48,0.48,0.01
+439710,ophthalmic plastic and reconstructive surgeon referral,99203,1.6,1.61,0.69,0.16
+439711,"ophthalmology, cornea and external diseases specialist referral",99213,1.3,1.35,0.57,0.1
+439712,"ophthalmology, glaucoma specialist referral",99213,1.3,1.35,0.57,0.1
+439713,oral & maxillofacial surgeon referral,99213,1.3,1.35,0.57,0.1
+439714,orthopedic physical therapist referral,97110,0.45,0.43,0.43,0.01
+439715,pain medicine specialist referral,97602,0.0,0.0,0.0,0.0
+439717,pediatric orthopedic surgeon referral,99213,1.3,1.35,0.57,0.1
+439718,"physical therapist, cardiopulmonary referral",97602,0.0,0.0,0.0,0.0
+439719,plastic and reconstructive surgeon referral,99203,1.6,1.61,0.69,0.16
+439721,psychoanalyst referral,90837,3.63,1.06,0.45,0.08
+439722,"psychologist, counselor referral",90791,3.84,1.22,0.48,0.1
+439723,"psychologist, psychotherapy referral",90792,4.16,1.49,0.74,0.16
+439725,registered dietitian referral,97602,0.0,0.0,0.0,0.0
+439727,"respiratory therapist, pulmonary rehabilitation referral",97605,0.55,0.74,0.17,0.01
+439728,speech language pathologist referral,92553,0.0,1.44,1.44,0.01
+439729,substance use rehabilitation facility referral,99215,2.8,2.42,1.28,0.21
+439730,substance use counselor referral,90792,4.16,1.49,0.74,0.16
+439731,substance use psychologist referral,90792,4.16,1.49,0.74,0.16
+439732,cardiothoracic vascular surgeon referral,99203,1.6,1.61,0.69,0.16
+439733,transplant surgeon referral,99213,1.3,1.35,0.57,0.1
+439734,vehicle modifications contractor referral,99213,1.3,1.35,0.57,0.1
+440040,trauma surgeon referral,99213,1.3,1.35,0.57,0.1
+440141,dance therapist referral,97112,0.5,0.48,0.48,0.01
+440142,kinesiotherapist referral,97110,0.45,0.43,0.43,0.01
+440209,pharmacist referral,99213,1.3,1.35,0.57,0.1
+440267,ocularist referral,99213,1.3,1.35,0.57,0.1
+440327,clinical exercise physiologist referral,97110,0.45,0.43,0.43,0.01
+440329,ESRD treatment center referral,99213,1.3,1.35,0.57,0.1
+440330,geriatric physical therapist referral,97110,0.45,0.43,0.43,0.01
+440331,hospital epilepsy unit referral,99213,1.3,1.35,0.57,0.1
+440332,neurologic physical therapist referral,97112,0.5,0.48,0.48,0.01
+440333,oncology clinic referral,99213,1.3,1.35,0.57,0.1
+440334,substance use disorder rehabilitation unit referral,99316,2.5,1.23,1.23,0.16
+440335,registered nurse referral,99347,0.9,0.41,0.41,0.04
+440519,psychiatric hospital referral,90792,4.16,1.49,0.74,0.16
+440520,hospital psychiatric unit referral,99215,2.8,2.42,1.28,0.21
+441618,adult care home referral,99213,1.3,1.35,0.57,0.1
+441743,homemaker referral,99213,1.3,1.35,0.57,0.1
+441811,"occupational therapist, physical rehabilitation referral",97110,0.45,0.43,0.43,0.01
+441914,physician assistant referral,99213,1.3,1.35,0.57,0.1
+442920,adult companion referral,99203,1.6,1.61,0.69,0.16
+444819,pulmonary function technologist referral,94010,0.17,0.63,0.63,0.02
+444819,pulmonary function technologist referral,94010,0.0,0.57,0.57,0.01
+444819,pulmonary function technologist referral,94010,0.17,0.06,0.06,0.01
+445053,osteopathic manipulative medicine physician referral,97140,0.43,0.4,0.4,0.01
+445182,"optometrist, low vision rehabilitation referral",99213,1.3,1.35,0.57,0.1
+445753,research study specialist referral,99213,1.3,1.35,0.57,0.1
+453256,gender-affirming surgeon referral,97110,0.45,0.43,0.43,0.01
+460432,geriatric psychiatrist referral,99213,1.3,1.35,0.57,0.1
+462170,birthing center referral,99221,1.63,0.66,0.66,0.17
+485829,nursing facility referral,99213,1.3,1.35,0.57,0.1
+496103,denturist referral,99202,0.93,1.16,0.4,0.07
+496275,"occupational therapist, environmental modification referral",97150,0.29,0.24,0.24,0.01
+496541,psychiatric-mental health nurse practitioner referral,90792,4.16,1.49,0.74,0.16
+497021,clinical psychologist referral,99213,1.3,1.35,0.57,0.1
+497030,family nurse practitioner referral,99213,1.3,1.35,0.57,0.1
+497640,adult reconstructive orthopedic surgeon referral,99213,1.3,1.35,0.57,0.1
+498636,intellectual disability psychiatrist referral,90792,4.16,1.49,0.74,0.16
+498968,referral to smoking cessation advisor,99359,0.75,0.34,0.29,0.04
+498969,referral to smoking cessation clinic,99359,0.75,0.34,0.29,0.04
+518495,comprehensive outpatient rehabilitation facility referral,97010,0.06,0.13,0.13,0.01
+518693,dental laboratory technician referral,99213,1.3,1.35,0.57,0.1
+518886,computed tomography radiologist technician referral,99203,1.6,1.61,0.69,0.16
+518887,nuclear imaging and therapy specialist referral,99204,2.6,2.21,1.15,0.24
+519204,medical laboratory technologist referral,99203,1.6,1.61,0.69,0.16
+523781,personal care attendant referral,99213,1.3,1.35,0.57,0.1
+523939,"occupational therapist, low vision referral",97116,0.45,0.43,0.43,0.01
+524105,doula referral,99203,1.6,1.61,0.69,0.16
+524841,SDoH referral: legal assistance,99403,1.46,1.02,0.57,0.08
+524842,SDoH referral: tutoring program,99404,1.95,1.22,0.77,0.13
+524843,SDoH referral: adult learning center,99213,1.3,1.35,0.57,0.1
+524844,SDoH referral: job center,99204,2.6,2.21,1.15,0.24
+524845,SDoH referral: basic skills training program,99213,1.3,1.35,0.57,0.1
+524846,SDoH referral: financial assistance program,99454,0.0,1.32,1.32,0.01
+524847,SDoH referral: language interpretation service,99221,1.63,0.66,0.66,0.17
+524848,SDoH referral: document translation service,99203,1.6,1.61,0.69,0.16
+524849,SDoH referral: workforce transition program,99213,1.3,1.35,0.57,0.1
+524850,SDoH referral: telephone social support program,99467,2.4,0.87,0.87,0.16
+524851,SDoH referral: ecotherapy,99495,2.78,3.27,1.2,0.17
+524852,SDOH referral: Mindfulness Based Stress Reduction program,97124,0.35,0.56,0.56,0.01
+524853,SDoH referral: microenterprise development program,99202,0.93,1.16,0.4,0.07
+524854,SDoH referral: vocational rehabilitation services,97154,0.0,0.0,0.0,0.0
+524856,SDoH referral: benefits enrollment assistance program,99202,0.93,1.16,0.4,0.07
+524858,SDoH referral: Child and Adult Care Food Program,99213,1.3,1.35,0.57,0.1
+524859,SDoH referral: Gus Schumacher Nutrition Incentive-funded Program,99203,1.6,1.61,0.69,0.16
+524861,SDoH referral: garden program,97156,0.0,0.0,0.0,0.0
+524863,SDoH referral: medically tailored meal program,99213,1.3,1.35,0.57,0.1
+524864,SDoH referral: Supplemental Nutrition Assistance Program,99203,1.6,1.61,0.69,0.16
+524865,"SDoH referral: Special Supplemental Nutrition Program for Women, Infants and Children",99202,0.93,1.16,0.4,0.07
+524866,SDoH referral: Summer Food Service Program,99203,1.6,1.61,0.69,0.16
+524867,SDoH referral: community health worker,99202,0.93,1.16,0.4,0.07
+524870,"SDoH referral: Farmers' Market Nutrition Program for Women, Infants and Children",99213,1.3,1.35,0.57,0.1
+524871,SDoH referral: Senior Farmers' Market Nutrition Program,99203,1.6,1.61,0.69,0.16
+524872,SDoH referral: Food Distribution Program on Indian Reservations,99213,1.3,1.35,0.57,0.1
+524873,SDoH referral: national school lunch program,99213,1.3,1.35,0.57,0.1
+524874,SDoH referral: school breakfast program,99213,1.3,1.35,0.57,0.1
+524875,SDoH referral: weatherization assistance program,99203,1.6,1.61,0.69,0.16
+524877,SDoH referral: street outreach program,99213,1.3,1.35,0.57,0.1
+524880,SDoH referral: mortgage assistance program,99203,1.6,1.61,0.69,0.16
+524881,SDoH referral: fair housing assistance program,99404,1.95,1.22,0.77,0.13
+524882,SDoH referral: day shelter program,90792,4.16,1.49,0.74,0.16
+524883,SDoH referral: emergency shelter program,99213,1.3,1.35,0.57,0.1
+524884,SDoH referral: Coordinated Entry Program,99213,1.3,1.35,0.57,0.1
+524885,SDoH referral: community development financial institution,99213,1.3,1.35,0.57,0.1
+524886,SDoH referral: community development corporation,99466,4.79,1.72,1.72,0.33
+524887,SDoH referral: area agency on aging,99203,1.6,1.61,0.69,0.16
+524888,SDoH referral: tenants rights organization program,99203,1.6,1.61,0.69,0.16
+524891,SDoH referral: medical legal partnership program,99213,1.3,1.35,0.57,0.1
+524893,SDoH referral: environmental hazard testing of residence program,99213,1.3,1.35,0.57,0.1
+524895,SDoH referral: housing repair assessment program,99203,1.6,1.61,0.69,0.16
+524896,SDoH referral: emergency housing fund program,99213,1.3,1.35,0.57,0.1
+524897,SDoH referral: lawyer,99213,1.3,1.35,0.57,0.1
+524898,SDoH referral: taxi voucher program,99213,1.3,1.35,0.57,0.1
+524899,SDoH referral: vehicle donation program,99213,1.3,1.35,0.57,0.1
+524901,SDoH referral: volunteer driver program,99213,1.3,1.35,0.57,0.1
+524902,SDoH referral: rideshare program,99213,1.3,1.35,0.57,0.1
+524903,SDoH referral: public transportation voucher program,99213,1.3,1.35,0.57,0.1
+524905,SDoH referral: microtransit program,99466,4.79,1.72,1.72,0.33
+524961,SDoH referral: automobile share program,99215,2.8,2.42,1.28,0.21
+524962,SDoH referral: vehicle share program,99203,1.6,1.61,0.69,0.16
+524964,SDoH referral: bicycle share program,99213,1.3,1.35,0.57,0.1
+524965,SDoH referral: victim assistance program,99203,1.6,1.61,0.69,0.16
+524966,SDoH referral: Temporary Assistance for Needy Families Program,99213,1.3,1.35,0.57,0.1
+524967,SDoH referral: National Elder Fraud Hotline,99402,0.98,0.84,0.38,0.05
+524968,SDoH referral: Low Income Home Energy Assistance Program,99404,1.95,1.22,0.77,0.13
+524969,SDoH referral: health insurance navigator program,99203,1.6,1.61,0.69,0.16
+524971,SDoH referral: English as a second language program,99213,1.3,1.35,0.57,0.1
+524972,SDoH referral: Children's Health Insurance Program,99203,1.6,1.61,0.69,0.16
+524973,SDoH referral: child care financial assistance program,99215,2.8,2.42,1.28,0.21
+524974,SDoH referral: Department of Veterans Affairs Veteran Services officer,99203,1.6,1.61,0.69,0.16
+524976,SDoH referral: Department of Veterans Affairs Veterans Crisis Line,90792,4.16,1.49,0.74,0.16
+524977,SDoH referral: Department of Veterans Affairs social work program,90792,4.16,1.49,0.74,0.16
+524978,SDoH referral: Department of Veterans Affairs facilities locator,99203,1.6,1.61,0.69,0.16
+524979,SDoH referral: Department of Veterans Affairs mental health services,90785,0.33,0.1,0.04,0.01
+524980,SDoH referral: health education and literacy program,99406,0.24,0.17,0.09,0.02
+524981,SDoH referral: telephone assistance program,99452,0.7,0.3,0.3,0.04
+524982,SDoH referral: Supplemental Security Income eligibility program,99203,1.6,1.61,0.69,0.16
+524983,SDoH referral: mobile crisis service,99291,4.5,3.27,1.42,0.44
+524984,SDoH referral: Telecommunication Relay Service,99213,1.3,1.35,0.57,0.1
+524985,SDoH referral: utility assistance program,99213,1.3,1.35,0.57,0.1
+524989,SDoH referral: community wellness program,99499,0.0,0.0,0.0,0.0
+524992,SDoH referral: financial counseling program,99446,0.35,0.15,0.15,0.03
+524993,SDoH referral: fair employment practice agency,99403,1.46,1.02,0.57,0.08
+524994,SDoH referral: high school completion program for attainment of diploma,99406,0.24,0.17,0.09,0.02
+524995,SDoH referral: affordable connectivity program,99213,1.3,1.35,0.57,0.1
+524996,SDoH referral: Internal Revenue Service free tax preparation program,99403,1.46,1.02,0.57,0.08
+524998,SDoH referral: intimate partner violence service,99213,1.3,1.35,0.57,0.1
+525000,SDoH referral: Military One Source directory,99213,1.3,1.35,0.57,0.1
+525001,SDoH referral: workforce training program,99499,0.0,0.0,0.0,0.0
+525002,SDoH referral: Department of Veterans Affairs Make the Connection directory,99213,1.3,1.35,0.57,0.1
+525003,SDoH referral: Department of Veterans Affairs: Fisher House Program,99213,1.3,1.35,0.57,0.1
+525005,SDoH referral: victim advocate program,99213,1.3,1.35,0.57,0.1
+525007,SDoH referral: skill-building for social connection program,97156,0.0,0.0,0.0,0.0
+525008,SDoH referral: home health aide program,99213,1.3,1.35,0.57,0.1
+525010,SDoH referral: supported employment program,99213,1.3,1.35,0.57,0.1
+525012,SDoH referral: state funded food assistance program,99403,1.46,1.02,0.57,0.08
+525014,SDoH referral: restorative justice program,99213,1.3,1.35,0.57,0.1
+525016,SDoH referral: community arts program,97760,0.5,0.91,0.91,0.01
+525017,SDoH referral: Yellow Ribbon Program,99406,0.24,0.17,0.09,0.02
+525018,SDoH referral: vocational education program,99404,1.95,1.22,0.77,0.13
+525019,SDoH referral: Institute for Veterans and Military Families program,99203,1.6,1.61,0.69,0.16
+525020,SDoH referral: Head Start Program,99213,1.3,1.35,0.57,0.1
+525021,SDoH referral: military funded education program,99203,1.6,1.61,0.69,0.16
+525022,SDoH referral: faith-based community program,99215,2.8,2.42,1.28,0.21
+525023,SDoH referral: elder abuse education program,99423,0.8,0.55,0.34,0.04
+525026,SDoH referral: parent support group,99203,1.6,1.61,0.69,0.16
+525027,SDoH referral: long-term care ombudsman,99221,1.63,0.66,0.66,0.17
+525028,SDoH referral: Lifeline communication program,99203,1.6,1.61,0.69,0.16
+525029,SDoH referral: Department of Veterans Affairs National Call Center for Homeless Veterans,99213,1.3,1.35,0.57,0.1
+525030,SDoH referral: Department of Veterans Affairs Homeless Veteran Chat service,99213,1.3,1.35,0.57,0.1
+525031,SDoH referral: Department of Veterans Affairs Home Loan Program,99213,1.3,1.35,0.57,0.1
+525033,SDoH referral: early-college high school program,99215,2.8,2.42,1.28,0.21
+525034,SDoH referral: digital literacy program,99213,1.3,1.35,0.57,0.1
+525036,SDoH referral: Department of Veterans Affairs Veterans Justice Outreach program,99203,1.6,1.61,0.69,0.16
+525037,SDoH referral: Department of Veterans Affairs Veterans Benefits Administration Program,99203,1.6,1.61,0.69,0.16
+525038,SDoH referral: Department of Veterans Affairs Veteran Readiness and Employment program,99203,1.6,1.61,0.69,0.16
+525039,SDoH referral: Department of Veterans Affairs National Cemetary Administration service,99403,1.46,1.02,0.57,0.08
+525040,SDoH referral: Department of Veterans Affairs Military2VA Case Management Program,99213,1.3,1.35,0.57,0.1
+525042,SDoH referral: Department of Veterans Affairs homeless programs,99213,1.3,1.35,0.57,0.1
+525043,SDoH referral: Department of Veterans Affairs medical center programs and services,99215,2.8,2.42,1.28,0.21
+525045,SDoH referral: Department of Veterans Affairs transition assistance program,99215,2.8,2.42,1.28,0.21
+525046,SDoH referral: Department of Veterans Affairs state veterans homes program,99213,1.3,1.35,0.57,0.1
+525047,SDoH referral: Department of Veterans Affairs intimate partner violence assistance program,97140,0.43,0.4,0.4,0.01
+525048,SDoH referral: Department of Veterans Affairs Native American Direct loan program,99203,1.6,1.61,0.69,0.16
+525050,SDoH referral: cash assistance program for immigrants,99403,1.46,1.02,0.57,0.08
+525051,SDoH referral: AmericaServes Program,99213,1.3,1.35,0.57,0.1
+525052,SDoH referral: socially assistive robot program,99213,1.3,1.35,0.57,0.1
+525054,SDoH referral: Department of Veterans Affairs directory of veterans service organization,99213,1.3,1.35,0.57,0.1
+525055,SDoH referral: Department of Veterans Affairs caregiver support program,99213,1.3,1.35,0.57,0.1
+525056,SDoH referral: Department of Veterans Affairs caregiver support line,97156,0.0,0.0,0.0,0.0
+525057,SDoH referral: continuation of health coverage program,99213,1.3,1.35,0.57,0.1
+525058,SDoH referral: community-based physical activity program,99213,1.3,1.35,0.57,0.1
+525059,family therapy referral,97156,0.0,0.0,0.0,0.0
+525060,SDoH referral: community meals service,99213,1.3,1.35,0.57,0.1
+525061,SDoH referral: transportation fuel voucher program,99203,1.6,1.61,0.69,0.16
+525063,SDoH referral: National Immigration Law Center,99203,1.6,1.61,0.69,0.16
+525064,SDoH referral: violence recovery program,99213,1.3,1.35,0.57,0.1
+525065,SDoH referral: residential abatement program,99204,2.6,2.21,1.15,0.24
+525066,SDoH referral: National Domestic Violence hotline,99215,2.8,2.42,1.28,0.21
+525068,liaison psychiatry service referral,99203,1.6,1.61,0.69,0.16
+525069,SDoH referral: clothing assistance,99213,1.3,1.35,0.57,0.1
+525071,pediatric weight management referral,99213,1.3,1.35,0.57,0.1
+525072,SDoH referral: loneliness artificial intelligence application,99453,0.0,0.59,0.59,0.02
+525073,physical fitness program referral,97610,0.4,11.87,0.12,0.01
+525839,memory loss care management referral,99213,1.3,1.35,0.57,0.1
+525964,sleep medicine otolaryngologist referral,99213,1.3,1.35,0.57,0.1
+526308,oncology nutritionist referral,97602,0.0,0.0,0.0,0.0
+527435,individual placement and support referral,99213,1.3,1.35,0.57,0.1
+535389,caregiver child attachment parent education referral,99203,1.6,1.61,0.69,0.16
+535392,gender-affirming care specialist referral,99203,1.6,1.61,0.69,0.16
+535459,community behavioral health agency referral,99213,1.3,1.35,0.57,0.1
+535479,intimate partner violence services referral,99215,2.8,2.42,1.28,0.21
+535833,oral and maxillofacial dentist referral,99203,1.6,1.61,0.69,0.16
+257851,psychologist referral,90791,3.84,1.22,0.48,0.1
+261128,kyphoplasty referral,22612,23.53,17.86,17.86,6.64
+269100,neurodevelopmental disabilities specialist referral,99406,0.24,0.17,0.09,0.02
+270209,craniosacral therapy referral,97140,0.43,0.4,0.4,0.01
+273505,living smart diabetes education referral,99483,3.84,4.12,1.64,0.27
+273840,electrolysis referral,97036,0.28,0.77,0.77,0.01
+277689,travel clinic referral,99203,1.6,1.61,0.69,0.16
+294301,CKD education referral,99406,0.24,0.17,0.09,0.02
+297245,sterilization,69210,0.61,0.76,0.28,0.07
+347975,lung cancer screening referral,77003,0.6,2.44,2.44,0.04
+347975,lung cancer screening referral,77003,0.0,2.23,2.23,0.01
+347975,lung cancer screening referral,77003,0.6,0.21,0.21,0.03
+355223,diabetic shoe referral,99153,0.0,0.34,0.34,0.02
+355888,advanced illness management referral,99213,1.3,1.35,0.57,0.1
+398387,Arrhythmology Consult,99213,1.3,1.35,0.57,0.1
+423568,adult crisis stabilization referral,99221,1.63,0.66,0.66,0.17
+439708,"occupational therapist, hand referral",97116,0.45,0.43,0.43,0.01
+439735,wound care nurse referral,99213,1.3,1.35,0.57,0.1
+440328,day training/habilitation services specialist referral,97156,0.0,0.0,0.0,0.0
+495560,"registered dietitian; nutrition, obesity and weight management referral",99213,1.3,1.35,0.57,0.1
+525009,SDoH referral: unemployment insurance program,99213,1.3,1.35,0.57,0.1
+525013,SDoH referral: social connection resource directory,99403,1.46,1.02,0.57,0.08
+525041,SDoH referral: Department of Veterans Affairs Liaison for Healthcare Program,99213,1.3,1.35,0.57,0.1
+525070,SDoH referral: toiletries assistance,99213,1.3,1.35,0.57,0.1
+278598,botox referral,97140,0.43,0.4,0.4,0.01
+318733,xeomin referral,97112,0.5,0.48,0.48,0.01

@@ -21,6 +21,10 @@
                         <th>Name</th>
                         <th>Athena Practice ID</th>
                         <th>Location</th>
+                        <th>Work GPCI</th>
+                        <th>PE GPCI</th>
+                        <th>MP GPCI</th>
+                        <th>Conversion Factor</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -30,6 +34,10 @@
                         <td>{{ practice.name }}</td>
                         <td>{{ practice.athena_practice_id }}</td>
                         <td>{{ practice.location }}</td>
+                        <td>{{ practice.work_gpci|default:"N/A" }}</td>
+                        <td>{{ practice.pe_gpci|default:"N/A" }}</td>
+                        <td>{{ practice.mp_gpci|default:"N/A" }}</td>
+                        <td>{{ practice.conversion_factor|default:"N/A" }}</td>
                         <td>
                             <form action="" method="post" style="display:inline-block; margin-top: 10px;">
                                 {% csrf_token %}
@@ -73,6 +81,37 @@
                     {% endfor %}
                 </select>
                 <button type="submit" name="create_user">Create User</button>
+            </form>
+        </div>
+
+        <div class="management-section">
+            <h3>Upload CPT Code Mappings</h3>
+            <form action="" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ upload_form.as_p }}
+                <button type="submit" name="upload_cpt_mappings">Upload CSV</button>
+            </form>
+        </div>
+
+        <div class="management-section">
+            <h3>Update GPCI & Conversion Factor</h3>
+            <form action="" method="post">
+                {% csrf_token %}
+                <select name="practice_id" required>
+                    <option value="" disabled selected>Select a practice</option>
+                    {% for practice in practices %}
+                    <option value="{{ practice.id }}">{{ practice.name }}</option>
+                    {% endfor %}
+                </select>
+                <label for="work_gpci">Work GPCI</label>
+                <input type="number" step="0.001" id="work_gpci" name="work_gpci" placeholder="Work GPCI" value="1.0" required>
+                <label for="pe_gpci">PE GPCI</label>
+                <input type="number" step="0.001" id="pe_gpci" name="pe_gpci" placeholder="PE GPCI" value="1.0" required>
+                <label for="mp_gpci">MP GPCI</label>
+                <input type="number" step="0.001" id="mp_gpci" name="mp_gpci" placeholder="MP GPCI" value="1.0" required>
+                <label for="conversion_factor">Conversion Factor</label>
+                <input type="number" step="0.01" id="conversion_factor" name="conversion_factor" placeholder="Conversion Factor" value="33.0" required>
+                <button type="submit" name="update_gpci_cf">Update GPCI & CF</button>
             </form>
         </div>
 

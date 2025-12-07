@@ -1,0 +1,791 @@
+ordertypeid,name
+257342,chiropractor referral
+257360,allergist & immunologist referral
+257361,anesthesiologist referral
+257362,cardiologist referral
+257363,dermatologist referral
+257364,otolaryngologist referral
+257365,"endocrinology, diabetes & metabolism specialist referral"
+257366,infertility reproductive endocrinology  referral
+257367,gastroenterologist referral
+257368,geriatric medicine referral
+257369,hematologist referral
+257370,infectious disease specialist referral
+257371,joint replacement referral
+257372,nephrologist referral
+257373,neurologist referral
+257375,obstetrician and gynecologist referral
+257376,oncologist referral
+257377,ophthalmologist referral
+257378,orthopedic surgeon referral
+257379,plastic surgeon referral
+257380,podiatrist referral
+257381,psychiatrist referral
+257382,pulmonary disease specialist referral
+257383,rheumatologist referral
+257384,sleep medicine referral
+257385,physical medicine and rehabilitation referral
+257386,general surgeon referral
+257387,urologist referral
+257768,optometrist referral
+257780,laparoscopic surgery referral
+257782,nutritionist/dietitian referral
+257786,pain management referral
+257822,addiction psychiatry referral
+257824,certified orthotist referral
+257825,certified prosthetist referral
+257826,certified prosthetist-orthotist referral
+257827,clinical cardiac electrophysiologist referral
+257828,colon & rectal surgeon referral
+257829,diagnostic radiologist referral
+257830,family medicine referral
+257831,gynecologist referral
+257832,hand surgeon referral
+257833,hematologist/oncologist referral
+257834,internal medicine referral
+257835,interventional radiologist referral
+257836,"plastic surgeon, head and neck referral"
+257837,medical oncologist referral
+257839,neuropsychiatrist referral
+257840,nuclear medicine specialist referral
+257841,obstetrician referral
+257842,occupational therapist referral
+257843,oral surgery/dentist referral
+257844,OSTEO. manipulative referral
+257846,pathologist referral
+257848,peripheral vas. dis./osteopathic referral
+257849,peripheral vascular disease referral
+257851,psychologist referral
+257852,radiation oncologist referral
+257853,radiation therapy referral
+257854,radiologist referral
+257855,surgical oncologist referral
+257856,thoracic surgeon referral
+257857,vascular surgeon referral
+257869,audiologist referral
+257874,pacemaker check consultation
+260761,physical therapist referral
+260813,hepatologist referral
+261128,kyphoplasty referral
+261129,home health referral
+261140,genetics referral
+261164,speech therapy referral
+261479,early intervention services provider referral
+261638,breast surgery referral
+261639,maternal & fetal medicine referral
+262461,gynecologic oncologist referral
+263281,diabetes management  referral
+263959,oral appliance & consult referral
+264968,neurotologist referral
+265630,behavioral psychotherapy referral
+266088,preoperative clearance consult
+266847,functional capacity evaluation consult
+267049,wound care referral
+267050,hospice & palliative medicine referral
+267103,cardiac rehabilitation provider referral
+267104,cardio pulmonary referral
+267231,pediatric cardiologist referral
+267295,follow up visit referral
+267317,urogynecologist referral
+268647,breast evaluation referral
+269078,urgent care/ER referral
+269079,critical care medicine referral
+269080,clinical & laboratory dermatological immunologist referral
+269081,dermatopathologist referral
+269082,pediatric dermatologist referral
+269083,emergency medicine referral
+269084,medical toxicologist referral
+269085,pediatric emergency medicine referral
+269086,sports medicine referral
+269087,undersea & hyperbaric medicine referral
+269088,adolescent medicine referral
+269090,interventional cardiology referral
+269091,transplant hepatologist referral
+269092,medical geneticist referral
+269093,clinical biochemical geneticist referral
+269094,molecular genetic pathologist referral
+269095,clinical geneticist referral
+269096,clinical molecular geneticist referral
+269097,neurological surgeon referral
+269099,child abuse pediatrician referral
+269100,neurodevelopmental disabilities specialist referral
+269101,neuromuscular medicine referral
+269102,vascular neurologist referral
+269103,orthopedic sports medicine referral
+269104,pediatric otolaryngologist referral
+269105,blood banking transfusion medicine referral
+269107,cytopathologist referral
+269125,child & adolescent psychiatrist referral
+269127,pediatric surgeon referral
+269131,mental health counselor referral
+269241,infusion therapy center referral
+269250,medical weight loss program referral
+269319,counseling referral
+269527,pediatric ophthalmologist referral
+270206,yoga referral
+270208,biofeedback therapy referral
+270209,craniosacral therapy referral
+270646,independent medical evaluation
+270654,skilled nursing facility referral
+271129,dentist referral
+271496,manual therapy referral
+272586,occupational medicine referral
+272610,Mohs-micrographic surgeon referral
+272643,orthopedic spine surgeon referral
+272654,lymphedema consult
+272659,social worker referral
+272842,assisted living facility referral
+272843,personal home care referral
+272955,pediatric rheumatologist referral
+273130,acupuncturist referral
+273504,OMT referral
+273505,living smart diabetes education referral
+273506,continuous glucose monitoring system referral
+273571,educator referral for pump training
+273740,pelvic floor therapy referral
+273821,wound care information
+273838,laser hair removal referral
+273839,esthetician referral
+273840,electrolysis referral
+273865,vestibular therapy referral
+274477,laser tattoo removal referral
+274478,DME evaluation referral
+274618,burn referral
+274619,enterostomy referral
+274681,medical nutrition therapy referral
+275234,genetic counselor referral
+275236,labor and delivery referral
+275472,HBTS home based therapeutic services
+275473,pass personal assistance services & support
+275687,UCSF hair clinic referral
+275688,UCSF environmental derm referral
+275802,bariatric medicine referral
+275855,insulin pump referral
+275895,pediatric craniofacial reconstruction referral
+275896,pediatric dentist referral
+275897,pediatric endocrinologist referral
+275898,pediatric gastroenterologist referral
+275899,pediatric genetics referral
+275900,pediatric gynecologist referral
+275901,pediatric hematologist/oncologist referral
+275902,pediatric metabolic genetics referral
+275904,pediatric pulmonologist referral
+275905,pediatric radiologist referral
+276041,orthopedic foot/ankle surgeon referral
+276050,perinatal services consult
+276066,amniocentesis and genetic counseling
+276067,chorionic villi sampling and genetic counseling
+276353,icd check
+276529,neuropsychologist referral
+276541,phototherapy referral
+276658,coumadin clinic referral
+276910,pulmonologist referral
+277090,pulmonary rehab referral
+277101,medical fitness referral
+277102,athlete conditioning referral
+277284,HIV counseling referral
+277580,melanoma/lymphoma clinic referral
+277687,urogynecology physical therapy referral
+277688,sexual medicine/vulvodynia referral
+277689,travel clinic referral
+277956,"blood transfusion, PRBC"
+277957,gynecologic surgery referral
+278025,replacement of implantable pulse generator referral
+278114,Pain Medicine
+278441,programming of deep brain stimulator
+278589,visible tumor referral
+278590,pigmented lesion referral
+278591,high risk skin cancer referral
+278592,CKD referral
+278598,botox referral
+279403,central auditory function testing referral
+279404,hearing screening referral
+280140,pediatric urologist referral
+280371,radioiodine I-131 ablation therapy referral
+280624,electrodiagnostic specialist referral
+280636,public health services provider referral
+280752,cardiac exercise physiologist referral
+285517,visiting nurse referral
+286517,spine center referral
+286538,overnight pulse oximetry referral
+286777,videostroboscopy referral
+288038,hair transplant referral
+288337,orthopedic oncology referral
+288742,medical massage
+289469,pharmacy clinic
+289497,early childhood intervention referral
+289498,child study center referral
+289620,nerve conduction referral
+289663,pediatric infectious disease referral
+289664,pediatric nephrologist referral
+289665,pediatric orthopedic referral
+289666,pediatric plastic surgery referral
+289667,auditory brainstem response referral
+289677,substance abuse rehabilitation referral
+289818,development evaluation referral
+289868,day medicine referral
+290258,home visiting referral
+290537,vitalstim therapy referral
+291900,transplant referral
+292881,neurocognitive referral
+292882,pre-op anesthesia evaluation
+293060,CKD IV-iron referral
+293061,CKD esa referral
+293064,help me grow referral
+293068,EGD referral
+293197,naturopath referral
+293198,plan of care referral
+293253,telephone counseling for smoking cessation
+293639,vein specialist referral
+293765,procedure clinic
+293787,dialysis education referral
+293788,authorization request
+293990,patient navigator referral
+294262,clinical therapist referral
+294263,obesity/metabolism referral
+294301,CKD education referral
+294336,davita empower program referral
+294880,renal transplant evaluation referral
+294980,surgery center referral
+295460,dialysis referral
+295603,endocrinology referral
+295645,primary care provider referral
+295885,oral & maxillofacial referral
+295926,impairment rating referral
+295965,diabetic ophthalmology referral
+296647,healing touch referral
+296965,prepare for surgery counseling
+297245,sterilization
+297261,ketogenic diet initiation
+297395,referral to smoking quit line
+298187,congestive heart failure clinic
+298886,women's health referral
+298906,chronic disease management referral
+299165,skilled nursing referral
+299306,hospitalist referral
+299825,arizona early intervention program referral
+299866,guided nurse referral
+300085,immunization referral
+300086,referral for smoking cessation counseling
+300926,pediatric neurologist referral
+301026,addiction medicine referral
+302466,urologic oncology referral
+302805,neuro-ophthalmologist referral
+302825,hypolipidemia referral
+302826,hyperlipidemia referral
+303765,stroke clinic referral
+304085,musculoskeletal treatment referral
+304669,pulmonary hypertension referral
+305325,augmentative and alternative communication (aac) referral
+305385,movement therapy referral
+305386,epileptologist referral
+305694,senior daycare referral
+306145,energy medicine referral
+306326,diabetes educator referral
+306685,neurological rehabilitation and balance referral
+307105,diabetes self management training
+307145,palliative medicine referral
+308907,immunologist referral
+309190,heart transplant referral
+309887,ambulatory services referral
+309949,multiple sclerosis specialist
+311087,lipid clinic referral
+311285,patient health education referral
+311623,hippotherapy
+311665,music therapist referral
+311666,habilitation specialist referral
+311667,respite care facility referral
+312114,"ophthalmology, retina specialist referral"
+312625,movement disorder specialist
+312786,gastroenterology surgery referral
+312787,genetic oncology referral
+312827,child life department
+313125,shared medical visit
+313206,vascular access team
+313745,neurointerventionalist referral
+314312,synagis referral
+315325,functional medicine evaluation
+315606,epilepsy monitoring unit
+316135,youth health services
+316406,applied behavior analysis therapy
+316546,heart valve clinic
+317205,reproductive endocrinologist referral
+317386,concussion clinic referral
+318066,endocrine surgery referral
+318128,oncology patient navigator
+318129,orthodontist referral
+318733,xeomin referral
+320285,breast cancer referral
+323986,hospice care facility referral
+325487,vascular diagnostic test
+332645,physical therapist hand referral
+334785,hospital referral
+335370,chiropractic and massage referral
+335648,care management referral
+336765,permanent partial disability rating
+336767,weight loss study
+336985,hypertension study referral
+337127,asthma education referral
+337128,vocational training/counseling
+338709,resource advocate referral
+338786,breast center referral
+339225,blood pressure referral
+339226,bmi referral
+339385,pediatric allergist referral
+339877,referral to the american cancer society
+339878,genetic testing referral
+340348,multi-disciplinary evaluation
+340349,functional restoration program
+340352,therapy evaluation
+340918,cancer support services
+341210,pediatric physical therapist referral
+341211,pediatric occupational therapist referral
+341363,pediatric speech therapy
+341884,rhinology referral
+341886,head and neck referral
+341887,laryngology referral
+342382,support group referral
+342521,ambulatory surgical center referral
+343433,TMJ referral
+343502,anticoagulation therapy referral
+343565,neo adjuvant chemotherapy
+343607,medication assistance program
+343846,"women, infant and children's program referral"
+343905,gait training referral
+343908,outpatient detox
+343927,medication education referral
+344017,CKD stage 3 education
+344018,CKD stage 4 education
+346266,laser treatment
+346326,community care referral
+346421,stress management referral
+347054,inpatient detoxification program referral
+347390,lung cancer referral
+347559,substance abuse referral
+347563,osteopathic referral
+347571,lead poisoning referral
+347572,tuberculosis contact referral
+347573,rabies investigation referral
+347718,bereavement counselor referral
+347728,home telemonitoring services
+347975,lung cancer screening referral
+348141,autism clinic referral
+348610,spina bifida clinic referral
+348611,down syndrome clinic referral
+348612,nicu follow up clinic referral
+348613,cleft lip/palate clinic referral
+348701,muscular dystrophy clinic referral
+348765,peritoneal dialysis catheter assessment referral
+348766,av fistula assessment referral
+348912,eating disorder therapy referral
+349254,clinical review board referral
+349294,imaging interpretation consult
+349321,lifelink referral
+349443,cerebral palsy clinic referral
+349523,hormone imbalance referral
+349921,home footcare
+350430,gestational diabetes education referral
+350542,SDoH referral: Meals on Wheels program
+350562,urgent care center referral
+350563,urgent care center transfer
+350906,home modifications contractor referral
+350907,bathroom modification referral
+351414,craniofacial referral
+351632,functional assessment referral
+352031,behavioral health coaching referral
+353402,infusion referral new patient
+353403,infusion referral treatment change
+353985,facial plastic surgeon referral
+354340,surgical epilepsy clinic referral
+354650,pediatric neuropsychology referral
+354651,residential treatment facility referral
+354922,ostomy care referral
+355223,diabetic shoe referral
+355224,tai chi referral
+355348,balance training referral
+355368,driving evaluation referral
+355622,structured intensive multidisciplinary program referral
+355623,interventional pain medicine specialist referral
+355888,advanced illness management referral
+356308,transition pediatric to adult care referral
+356319,telehealth video consult
+356392,provider/provider telehealth consult
+356393,provider/provider/patient telehealth consult
+377366,vagus nerve stimulation implant referral
+377437,eye care referral
+377741,foot/ankle referral
+377805,pulmonary transplant referral
+377941,motion/gait analysis
+378072,behavioral health referral
+378286,tracheostomy/ventilator clinic referral
+378288,cystic fibrosis clinic referral
+385921,remote care management referral
+386571,pre-op spine program
+386663,blood draw referral
+386818,intense cardiac rehab referral
+386841,endodontist referral
+386899,mid-level referral
+387009,hot tub referral
+387547,neuro-oncology referral
+387599,physical performance evaluation referral
+387626,oncology case management referral
+387636,infant development referral
+387727,autonomic dysfunction referral
+387728,brace referral
+387730,serial casting referral
+387933,ayurveda referral
+388164,population health referral
+388341,CIED remote monitoring
+388543,lice treatment referral
+388590,health partner referral
+388780,education assistance referral
+388782,weight management referral
+389108,pediatric bariatric medicine referral
+389683,pediatric neurosurgery referral
+390531,allergist referral
+390851,exercise physiologist referral
+390903,clinical sleep educator
+390969,structural heart clinic referral
+391061,comprehensive child and family therapy referral
+391063,hepatitis clinic referral
+391077,preparing for surgery class
+391311,group counseling referral
+391637,medication management referral
+391650,walk-in clinic
+391652,mobility referral
+391876,osteopathic manipulation referral
+391960,lung transplant referral
+391971,breastfeeding clinic referral
+393123,diet/nutrition education referral
+393393,peritoneal dialysis catheter placement referral
+394069,comprehensive vestibular diagnostic evaluation referral
+394132,vocational rehabilitation services referral
+395504,free/reduced care referral
+395815,intensive outpatient therapy program referral
+396128,Vascular Anomalies Referral
+396307,senior services provider referral
+396567,lifestyle management referral
+396568,cognitive behavioral therapy referral
+396747,bone health referral
+397177,bariatric surgery referral
+398387,Arrhythmology Consult
+398389,Worker's Comp Attendant and Custodial Care Referral
+398537,cardiovascular genetics referral
+399601,hypertension clinic referral
+399638,financial counseling referral
+399772,group home referral
+399773,foster care agency referral
+400532,behavior analysis referral
+400534,transgender health referral
+400535,advance care planning facilitator referral
+400624,Aerodigestive Clinic Referral
+401010,liver transplant referral
+401370,referral - prescription monitoring
+408067,pediatric audiologist referral
+408309,literacy program referral
+408394,pediatric sleep medicine referral
+408395,obesity counseling referral
+409459,orthosis referral
+409567,post-exposure evaluation
+409630,diabetic nutrition education referral
+409720,adult congenital heart disease clinic referral
+410346,mental health clinic referral
+410348,pediatric language skills education referral
+410547,laser eye surgery referral
+410747,bladder clinic referral
+410888,patient-centered medical home referral
+410941,health home referral
+410942,pediatric health home referral
+410943,pediatric home health referral
+421457,continuity of care referral
+421490,diabetic treatment center referral
+421582,vestibular disorder referral
+421690,language therapy referral
+421704,supervised exercise therapy referral
+421846,restorative dental referral
+421949,peripheral artery disease rehabilitation referral
+422036,foot care referral
+422093,telemedicine consult
+422315,prescribed pediatric extended care
+422328,CLINICAL HEALTH PSYCHOLOGY/PAIN PSYCHOLOGY REFERRAL
+422377,cardio-oncology referral
+423096,home health: wound care nurse referral
+423128,Physics Consult for Interoperative Radiation Therapy
+423191,In Vitro Fertilization Consult
+423192,COPD Education Referral
+423424,Environmental clinic referral
+423566,adult substance abuse intensive outpatient treatment referral
+423567,child substance abuse intensive outpatient treatment referral
+423568,adult crisis stabilization referral
+423569,child crisis stabilization referral
+423570,adult substance abuse group referral
+423571,child substance abuse group referral
+423572,adult crisis stabilization after care group referral
+423632,Pulmonary nodule clinic referral
+423648,medication referral
+424040,ocular oncology referral
+424043,wellness and risk reduction program referral
+424082,diabetes self-management education and support referral
+424190,psychosocial rehabilitation referral
+424335,nursing consult
+424980,partial hospital program referral
+426162,lipidology referral
+426257,Ryan White program referral
+426499,endovascular referral
+426500,vascular referral
+426677,infectious disease clinic referral
+427065,referral to maternity services
+427137,physiotherapy referral
+427307,ENT surgery referral
+427662,referral to play therapy
+427916,certified nurse midwife referral
+428396,breast health navigator referral
+429122,sexual medicine referral
+430104,mobile care nursing services referral
+430498,art therapist referral
+438927,intermediate care facility referral
+438928,custodial care facility referral
+439020,community health worker referral
+439155,nutritionist referral
+439646,female pelvic medicine & reconstructive surgeon referral
+439685,SDoH referral: adult day care center
+439686,athletic trainer referral
+439687,behavior analyst referral
+439688,behavioral health counselor referral
+439689,case manager/care coordinator referral
+439690,child substance use treatment facility referral
+439691,clinical child & adolescent psychologist referral
+439692,clinical health psychologist referral
+439693,cognitive & behavioral psychologist referral
+439694,developmental behavioral pediatrics referral
+439695,exercise & sports psychologist referral
+439696,health educator referral
+439697,in home supportive care provider referral
+439698,independent medical examiner referral
+439699,lactation consultant referral
+439700,massage therapist referral
+439702,multi-specialty clinic referral
+439703,naprapath referral
+439705,occupational environmental medicine referral
+439706,"occupational therapist, ergonomics referral"
+439707,"occupational therapist, feeding, eating & swallowing referral"
+439708,"occupational therapist, hand referral"
+439709,"occupational therapist, neurorehabilitation referral"
+439710,ophthalmic plastic and reconstructive surgeon referral
+439711,"ophthalmology, cornea and external diseases specialist referral"
+439712,"ophthalmology, glaucoma specialist referral"
+439713,oral & maxillofacial surgeon referral
+439714,orthopedic physical therapist referral
+439715,pain medicine specialist referral
+439717,pediatric orthopedic surgeon referral
+439718,"physical therapist, cardiopulmonary referral"
+439719,plastic and reconstructive surgeon referral
+439721,psychoanalyst referral
+439722,"psychologist, counselor referral"
+439723,"psychologist, psychotherapy referral"
+439725,registered dietitian referral
+439727,"respiratory therapist, pulmonary rehabilitation referral"
+439728,speech language pathologist referral
+439729,substance use rehabilitation facility referral
+439730,substance use counselor referral
+439731,substance use psychologist referral
+439732,cardiothoracic vascular surgeon referral
+439733,transplant surgeon referral
+439734,vehicle modifications contractor referral
+439735,wound care nurse referral
+440040,trauma surgeon referral
+440141,dance therapist referral
+440142,kinesiotherapist referral
+440209,pharmacist referral
+440267,ocularist referral
+440327,clinical exercise physiologist referral
+440328,day training/habilitation services specialist referral
+440329,ESRD treatment center referral
+440330,geriatric physical therapist referral
+440331,hospital epilepsy unit referral
+440332,neurologic physical therapist referral
+440333,oncology clinic referral
+440334,substance use disorder rehabilitation unit referral
+440335,registered nurse referral
+440519,psychiatric hospital referral
+440520,hospital psychiatric unit referral
+441618,adult care home referral
+441743,homemaker referral
+441811,"occupational therapist, physical rehabilitation referral"
+441914,physician assistant referral
+442920,adult companion referral
+444819,pulmonary function technologist referral
+445053,osteopathic manipulative medicine physician referral
+445182,"optometrist, low vision rehabilitation referral"
+445753,research study specialist referral
+453256,gender-affirming surgeon referral
+460432,geriatric psychiatrist referral
+462170,birthing center referral
+485829,nursing facility referral
+495560,"registered dietitian; nutrition, obesity and weight management referral"
+496103,denturist referral
+496275,"occupational therapist, environmental modification referral"
+496541,psychiatric-mental health nurse practitioner referral
+497021,clinical psychologist referral
+497030,family nurse practitioner referral
+497640,adult reconstructive orthopedic surgeon referral
+498636,intellectual disability psychiatrist referral
+498968,referral to smoking cessation advisor
+498969,referral to smoking cessation clinic
+518495,comprehensive outpatient rehabilitation facility referral
+518693,dental laboratory technician referral
+518886,computed tomography radiologist technician referral
+518887,nuclear imaging and therapy specialist referral
+519204,medical laboratory technologist referral
+523781,personal care attendant referral
+523939,"occupational therapist, low vision referral"
+524105,doula referral
+524841,SDoH referral: legal assistance
+524842,SDoH referral: tutoring program
+524843,SDoH referral: adult learning center
+524844,SDoH referral: job center
+524845,SDoH referral: basic skills training program
+524846,SDoH referral: financial assistance program
+524847,SDoH referral: language interpretation service
+524848,SDoH referral: document translation service
+524849,SDoH referral: workforce transition program
+524850,SDoH referral: telephone social support program
+524851,SDoH referral: ecotherapy
+524852,SDOH referral: Mindfulness Based Stress Reduction program
+524853,SDoH referral: microenterprise development program
+524854,SDoH referral: vocational rehabilitation services
+524856,SDoH referral: benefits enrollment assistance program
+524858,SDoH referral: Child and Adult Care Food Program
+524859,SDoH referral: Gus Schumacher Nutrition Incentive-funded Program
+524861,SDoH referral: garden program
+524863,SDoH referral: medically tailored meal program
+524864,SDoH referral: Supplemental Nutrition Assistance Program
+524865,"SDoH referral: Special Supplemental Nutrition Program for Women, Infants and Children"
+524866,SDoH referral: Summer Food Service Program
+524867,SDoH referral: community health worker
+524870,"SDoH referral: Farmers' Market Nutrition Program for Women, Infants and Children"
+524871,SDoH referral: Senior Farmers' Market Nutrition Program
+524872,SDoH referral: Food Distribution Program on Indian Reservations
+524873,SDoH referral: national school lunch program
+524874,SDoH referral: school breakfast program
+524875,SDoH referral: weatherization assistance program
+524877,SDoH referral: street outreach program
+524880,SDoH referral: mortgage assistance program
+524881,SDoH referral: fair housing assistance program
+524882,SDoH referral: day shelter program
+524883,SDoH referral: emergency shelter program
+524884,SDoH referral: Coordinated Entry Program
+524885,SDoH referral: community development financial institution
+524886,SDoH referral: community development corporation
+524887,SDoH referral: area agency on aging
+524888,SDoH referral: tenants rights organization program
+524891,SDoH referral: medical legal partnership program
+524893,SDoH referral: environmental hazard testing of residence program
+524895,SDoH referral: housing repair assessment program
+524896,SDoH referral: emergency housing fund program
+524897,SDoH referral: lawyer
+524898,SDoH referral: taxi voucher program
+524899,SDoH referral: vehicle donation program
+524901,SDoH referral: volunteer driver program
+524902,SDoH referral: rideshare program
+524903,SDoH referral: public transportation voucher program
+524905,SDoH referral: microtransit program
+524961,SDoH referral: automobile share program
+524962,SDoH referral: vehicle share program
+524964,SDoH referral: bicycle share program
+524965,SDoH referral: victim assistance program
+524966,SDoH referral: Temporary Assistance for Needy Families Program
+524967,SDoH referral: National Elder Fraud Hotline
+524968,SDoH referral: Low Income Home Energy Assistance Program
+524969,SDoH referral: health insurance navigator program
+524971,SDoH referral: English as a second language program
+524972,SDoH referral: Children's Health Insurance Program
+524973,SDoH referral: child care financial assistance program
+524974,SDoH referral: Department of Veterans Affairs Veteran Services officer
+524976,SDoH referral: Department of Veterans Affairs Veterans Crisis Line
+524977,SDoH referral: Department of Veterans Affairs social work program
+524978,SDoH referral: Department of Veterans Affairs facilities locator
+524979,SDoH referral: Department of Veterans Affairs mental health services
+524980,SDoH referral: health education and literacy program
+524981,SDoH referral: telephone assistance program
+524982,SDoH referral: Supplemental Security Income eligibility program
+524983,SDoH referral: mobile crisis service
+524984,SDoH referral: Telecommunication Relay Service
+524985,SDoH referral: utility assistance program
+524989,SDoH referral: community wellness program
+524992,SDoH referral: financial counseling program
+524993,SDoH referral: fair employment practice agency
+524994,SDoH referral: high school completion program for attainment of diploma
+524995,SDoH referral: affordable connectivity program
+524996,SDoH referral: Internal Revenue Service free tax preparation program
+524998,SDoH referral: intimate partner violence service
+525000,SDoH referral: Military One Source directory
+525001,SDoH referral: workforce training program
+525002,SDoH referral: Department of Veterans Affairs Make the Connection directory
+525003,SDoH referral: Department of Veterans Affairs: Fisher House Program
+525005,SDoH referral: victim advocate program
+525007,SDoH referral: skill-building for social connection program
+525008,SDoH referral: home health aide program
+525009,SDoH referral: unemployment insurance program
+525010,SDoH referral: supported employment program
+525012,SDoH referral: state funded food assistance program
+525013,SDoH referral: social connection resource directory
+525014,SDoH referral: restorative justice program
+525016,SDoH referral: community arts program
+525017,SDoH referral: Yellow Ribbon Program
+525018,SDoH referral: vocational education program
+525019,SDoH referral: Institute for Veterans and Military Families program
+525020,SDoH referral: Head Start Program
+525021,SDoH referral: military funded education program
+525022,SDoH referral: faith-based community program
+525023,SDoH referral: elder abuse education program
+525026,SDoH referral: parent support group
+525027,SDoH referral: long-term care ombudsman
+525028,SDoH referral: Lifeline communication program
+525029,SDoH referral: Department of Veterans Affairs National Call Center for Homeless Veterans
+525030,SDoH referral: Department of Veterans Affairs Homeless Veteran Chat service
+525031,SDoH referral: Department of Veterans Affairs Home Loan Program
+525033,SDoH referral: early-college high school program
+525034,SDoH referral: digital literacy program
+525036,SDoH referral: Department of Veterans Affairs Veterans Justice Outreach program
+525037,SDoH referral: Department of Veterans Affairs Veterans Benefits Administration Program
+525038,SDoH referral: Department of Veterans Affairs Veteran Readiness and Employment program
+525039,SDoH referral: Department of Veterans Affairs National Cemetary Administration service
+525040,SDoH referral: Department of Veterans Affairs Military2VA Case Management Program
+525041,SDoH referral: Department of Veterans Affairs Liaison for Healthcare Program
+525042,SDoH referral: Department of Veterans Affairs homeless programs
+525043,SDoH referral: Department of Veterans Affairs medical center programs and services
+525045,SDoH referral: Department of Veterans Affairs transition assistance program
+525046,SDoH referral: Department of Veterans Affairs state veterans homes program
+525047,SDoH referral: Department of Veterans Affairs intimate partner violence assistance program
+525048,SDoH referral: Department of Veterans Affairs Native American Direct loan program
+525050,SDoH referral: cash assistance program for immigrants
+525051,SDoH referral: AmericaServes Program
+525052,SDoH referral: socially assistive robot program
+525054,SDoH referral: Department of Veterans Affairs directory of veterans service organization
+525055,SDoH referral: Department of Veterans Affairs caregiver support program
+525056,SDoH referral: Department of Veterans Affairs caregiver support line
+525057,SDoH referral: continuation of health coverage program
+525058,SDoH referral: community-based physical activity program
+525059,family therapy referral
+525060,SDoH referral: community meals service
+525061,SDoH referral: transportation fuel voucher program
+525063,SDoH referral: National Immigration Law Center
+525064,SDoH referral: violence recovery program
+525065,SDoH referral: residential abatement program
+525066,SDoH referral: National Domestic Violence hotline
+525068,liaison psychiatry service referral
+525069,SDoH referral: clothing assistance
+525070,SDoH referral: toiletries assistance
+525071,pediatric weight management referral
+525072,SDoH referral: loneliness artificial intelligence application
+525073,physical fitness program referral
+525839,memory loss care management referral
+525964,sleep medicine otolaryngologist referral
+526308,oncology nutritionist referral
+527435,individual placement and support referral
+535389,caregiver child attachment parent education referral
+535392,gender-affirming care specialist referral
+535459,community behavioral health agency referral
+535479,intimate partner violence services referral
+535833,oral and maxillofacial dentist referral

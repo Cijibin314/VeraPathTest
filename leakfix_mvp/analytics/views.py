@@ -20,6 +20,7 @@ from .models import (
     Invoice,
     UserProfile,
     Practice,
+    CPTCodeMapping,
 )
 from .forms import ReferralForm
 from analytics.ai_utils import generate_suggestions
@@ -75,10 +76,15 @@ def dashboard(request):
         for ref in referrals_in_period.filter(scheduled_at__isnull=False)
     ]
 
-    total_with_provider = referrals_with_provider_in_period.count()
+    total_with_provider = referrals_in_period.filter(provider__isnull=False).count()
     in_network_rate = (in_network / total_with_provider * 100.0) if total_with_provider else 0
     out_network_rate = (out_network / total_with_provider * 100.0) if total_with_provider else 0
     
+    out_of_network_referrals_with_provider = referrals_in_period.filter(in_network=False, provider__isnull=False)
+    total_leakage_cost = out_of_network_referrals_with_provider.aggregate(total_cost=Sum('rvu_cost'))['total_cost'] or Decimal('0.00')
+    average_leakage_cost = (total_leakage_cost / out_of_network_referrals_with_provider.count()) if out_of_network_referrals_with_provider.count() > 0 else Decimal('0.00')
+
+
     completed = referrals_in_period.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
     completion_rate = (completed / total * 100.0) if total else 0
 
@@ -92,6 +98,8 @@ def dashboard(request):
         'out_network_rate': out_network_rate,
         'completion_rate': completion_rate,
         'avg_days_to_specialist': avg_days_to_specialist,
+        'total_leakage_cost': total_leakage_cost,
+        'average_leakage_cost': average_leakage_cost,
         'debug_message': debug_message,
         'selected_quarters': selected_quarters,
     }
@@ -427,16 +435,16 @@ def metric_detail(request, metric):
             completed = month_refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
             value = (completed / total * 100.0) if total else 0
         elif metric == 'leakage_cost':
-            value = month_refs.filter(in_network=False).aggregate(total_leak=Sum('cost_value')).get('total_leak') or 0
+            value = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
         elif metric == 'retained_revenue':
-            avg_in_cost = month_refs.filter(in_network=True).aggregate(avg=Avg('cost_value'))['avg'] or 0
+            avg_in_cost = month_refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or 0
             in_net_count = month_refs.filter(in_network=True).count()
             value = avg_in_cost * in_net_count
         elif metric == 'referral_volume':
             value = month_refs.count()
         elif metric == 'avg_leakage_cost':
             out_count = month_refs.filter(in_network=False).count()
-            total_leak = month_refs.filter(in_network=False).aggregate(total_leak=Sum('cost_value')).get('total_leak') or 0
+            total_leak = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
             value = (total_leak / out_count) if out_count else 0
         else:
             value = 0
@@ -493,9 +501,9 @@ def specialty_dashboard(request):
         else:
             in_network = refs.filter(in_network=True).count()
             out_network = refs.filter(in_network=False).count()
-        leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('cost_value')).get('total_leak') or 0
+        leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
         avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
-        avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('cost_value'))['avg'] or 0
+        avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or 0
         retained_revenue = in_network * avg_in_cost
         durations_completion = [
             (ref.completed_at.date() - ref.referral_date).days
@@ -547,9 +555,9 @@ def specialty_detail(request, specialty):
     else:
         in_network = refs.filter(in_network=True).count()
         out_network = refs.filter(in_network=False).count()
-    leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('cost_value')).get('total_leak') or 0
+    leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
     avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
-    avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('cost_value'))['avg'] or 0
+    avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or 0
     retained_revenue = in_network * avg_in_cost
     durations_completion = [
         (ref.completed_at.date() - ref.referral_date).days
@@ -1050,11 +1058,43 @@ def create_referral_order_ajax(request):
                 is_urgent=data.get('is_urgent', False),
                 status=status,
                 referral_date=datetime.now().date(),
+                documenttypeid=order_type_id,
                 athena_document_id=athena_document_id, # Storing the order/document ID
                 athena_encounter_id=encounter_id, # Storing the encounter ID
                 provider_note=provider_note,
                 note_to_patient=note_to_patient,
             )
+
+            # Calculate RVU cost on the spot
+            rvu_calculated_cost = Decimal("0.00")
+            logging.info(f"--- RVU Calculation for new referral (ordertypeid: {order_type_id}) ---")
+            if order_type_id:
+                try:
+                    cpt_mapping = CPTCodeMapping.objects.get(ordertypeid=order_type_id)
+                    logging.info(f"Found CPTCodeMapping: {cpt_mapping.cpt_code}")
+                    practice = provider.practice
+                    if practice and practice.work_gpci and practice.pe_gpci and practice.mp_gpci and practice.conversion_factor:
+                        logging.info(f"Practice GPCI/CF values: wGPCI={practice.work_gpci}, peGPCI={practice.pe_gpci}, mpGPCI={practice.mp_gpci}, CF={practice.conversion_factor}")
+                        logging.info(f"RVU components: wRVU={cpt_mapping.work_rvu}, peRVU={cpt_mapping.non_fac_pe_rvu}, mpRVU={cpt_mapping.mp_rvu}")
+                        total_rvu = (cpt_mapping.work_rvu * practice.work_gpci) + \
+                                    (cpt_mapping.non_fac_pe_rvu * practice.pe_gpci) + \
+                                    (cpt_mapping.mp_rvu * practice.mp_gpci)
+                        logging.info(f"Calculated Total RVU: {total_rvu}")
+                        rvu_calculated_cost = total_rvu * practice.conversion_factor
+                        logging.info(f"Final Calculated RVU Cost: {rvu_calculated_cost}")
+                    else:
+                        logging.warning(f"Practice '{practice.name}' is missing GPCI or Conversion Factor values. Cannot calculate RVU cost.")
+                except CPTCodeMapping.DoesNotExist:
+                    logging.info(f"No CPTCodeMapping found for ordertypeid {order_type_id}")
+                except Exception as e:
+                    logging.error(f"Error calculating RVU cost for ordertypeid {order_type_id}: {e}")
+            else:
+                logging.info("No ordertypeid provided. Cannot calculate RVU cost.")
+            logging.info("--- End RVU Calculation ---")
+
+            referral.rvu_cost = rvu_calculated_cost
+            referral.save()
+            
             ReferralHistory.objects.create(referral=referral, status=referral.status)
             logging.info(f"Local Referral {referral.id} created for patient {patient.original_id} and provider {provider.npi}.")
 
@@ -1209,8 +1249,12 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.models import User
 from django.contrib import messages
 from decimal import Decimal
+import csv
+import io
 
 from . import athena_client
+from .forms import CPTCodeMappingUploadForm
+from .models import CPTCodeMapping
 
 
 from django.http import StreamingHttpResponse
@@ -1227,6 +1271,7 @@ from django.http import StreamingHttpResponse
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def management(request):
+    upload_form = CPTCodeMappingUploadForm()
     if request.method == 'POST':
         # Handle Update In-Network
         if 'update_in_network' in request.POST:
@@ -1244,6 +1289,38 @@ def management(request):
             except Practice.DoesNotExist:
                 messages.error(request, "Practice not found.")
             return redirect('analytics:management')
+        
+        if 'upload_cpt_mappings' in request.POST:
+            upload_form = CPTCodeMappingUploadForm(request.POST, request.FILES)
+            if upload_form.is_valid():
+                csv_file = request.FILES['file']
+                if not csv_file.name.endswith('.csv'):
+                    messages.error(request, 'This is not a CSV file.')
+                else:
+                    try:
+                        decoded_file = csv_file.read().decode('utf-8')
+                        io_string = io.StringIO(decoded_file)
+                        reader = csv.reader(io_string)
+                        next(reader) # Skip header row
+                        for row in reader:
+                            # ordertypeid,name,cpt_code,work_rvu,non_fac_pe_rvu,fac_pe_rvu,mp_rvu
+                            _, created = CPTCodeMapping.objects.update_or_create(
+                                ordertypeid=row[0],
+                                defaults={
+                                    'name': row[1],
+                                    'cpt_code': row[2],
+                                    'work_rvu': Decimal(row[3]),
+                                    'non_fac_pe_rvu': Decimal(row[4]),
+                                    'fac_pe_rvu': Decimal(row[5]),
+                                    'mp_rvu': Decimal(row[6]),
+                                }
+                            )
+                        messages.success(request, 'CPT Code Mappings uploaded successfully.')
+                    except Exception as e:
+                        messages.error(request, f'Error processing file: {e}')
+
+                return redirect('analytics:management')
+
     # Handle Create Practice Form
     if 'create_practice' in request.POST:
         name = request.POST.get('name')
@@ -1262,6 +1339,30 @@ def management(request):
             messages.error(request, 'All fields are required to create a practice.')
         return redirect('analytics:management')
 
+    # Handle Update GPCI & CF Form
+    if 'update_gpci_cf' in request.POST:
+        practice_id = request.POST.get('practice_id')
+        work_gpci_str = request.POST.get('work_gpci')
+        pe_gpci_str = request.POST.get('pe_gpci')
+        mp_gpci_str = request.POST.get('mp_gpci')
+        conversion_factor_str = request.POST.get('conversion_factor')
+
+        if practice_id and work_gpci_str and pe_gpci_str and mp_gpci_str and conversion_factor_str:
+            try:
+                practice = Practice.objects.get(id=practice_id)
+                practice.work_gpci = Decimal(work_gpci_str)
+                practice.pe_gpci = Decimal(pe_gpci_str)
+                practice.mp_gpci = Decimal(mp_gpci_str)
+                practice.conversion_factor = Decimal(conversion_factor_str)
+                practice.save()
+                messages.success(request, f"GPCI and Conversion Factor updated for {practice.name}.")
+            except Practice.DoesNotExist:
+                messages.error(request, "Practice not found.")
+            except ValueError:
+                messages.error(request, "Invalid number format for GPCI or Conversion Factor.")
+        else:
+            messages.error(request, 'All fields are required to update GPCI and Conversion Factor.')
+        return redirect('analytics:management')
     # Handle Create User Form
     if 'create_user' in request.POST:
         username = request.POST.get('username')
@@ -1293,7 +1394,7 @@ def management(request):
         return redirect('analytics:management')
 
     practices = Practice.objects.all()
-    return render(request, 'analytics/management.html', {'practices': practices})
+    return render(request, 'analytics/management.html', {'practices': practices, 'upload_form': upload_form})
 
 
 
@@ -1501,14 +1602,21 @@ def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
             provider_id = str(provider_data.get("providerid"))
             if not provider_id: continue
 
+            defaults = {}
+            if provider_data.get("displayname"):
+                defaults['full_name'] = provider_data.get("displayname")
+            if provider_data.get("npi"):
+                defaults['npi'] = provider_data.get("npi")
+            if provider_data.get("specialty"):
+                defaults['specialty'] = provider_data.get("specialty")
+            
+            if not defaults:
+                continue
+
             provider, created = Provider.objects.update_or_create(
                 practice=practice,
                 providerid=provider_id,
-                defaults={
-                    "full_name": provider_data.get("displayname") or f"Provider {provider_id}",
-                    "npi": provider_data.get("npi"),
-                    "specialty": provider_data.get("specialty"),
-                }
+                defaults=defaults
             )
             if created:
                 created_count += 1
@@ -1703,18 +1811,57 @@ def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
                             else:
                                 referral_date = datetime.strptime(referral_date_str, '%m/%d/%Y').date()
 
+                            documenttypeid = order.get('documenttypeid')
+                            rvu_calculated_cost = Decimal("0.00")
+                            logging.info(f"--- RVU Calculation for documenttypeid: {documenttypeid} ---")
+                            if documenttypeid:
+                                try:
+                                    cpt_mapping = CPTCodeMapping.objects.get(ordertypeid=documenttypeid)
+                                    logging.info(f"Found CPTCodeMapping: {cpt_mapping.cpt_code}")
+                                    
+                                    if practice.work_gpci and practice.pe_gpci and practice.mp_gpci and practice.conversion_factor:
+                                        logging.info(f"Practice GPCI/CF values: wGPCI={practice.work_gpci}, peGPCI={practice.pe_gpci}, mpGPCI={practice.mp_gpci}, CF={practice.conversion_factor}")
+                                        logging.info(f"RVU components: wRVU={cpt_mapping.work_rvu}, peRVU={cpt_mapping.non_fac_pe_rvu}, mpRVU={cpt_mapping.mp_rvu}")
+
+                                        total_rvu = (cpt_mapping.work_rvu * practice.work_gpci) + \
+                                                    (cpt_mapping.non_fac_pe_rvu * practice.pe_gpci) + \
+                                                    (cpt_mapping.mp_rvu * practice.mp_gpci)
+                                        logging.info(f"Calculated Total RVU: {total_rvu}")
+
+                                        rvu_calculated_cost = total_rvu * practice.conversion_factor
+                                        logging.info(f"Final Calculated RVU Cost: {rvu_calculated_cost}")
+                                    else:
+                                        logging.warning(f"Practice '{practice.name}' is missing GPCI or Conversion Factor values. Cannot calculate RVU cost.")
+
+                                except CPTCodeMapping.DoesNotExist:
+                                    logging.info(f"No CPTCodeMapping found for documenttypeid {documenttypeid}")
+                                except Exception as e:
+                                    logging.error(f"Error calculating RVU cost for documenttypeid {documenttypeid}: {e}")
+                            else:
+                                logging.info("No documenttypeid found in order. Cannot calculate RVU cost.")
+                            logging.info("--- End RVU Calculation ---")
+
+                            defaults = {
+                                'patient': patient,
+                                'in_network': provider.is_in_network if provider else False,
+                                'rvu_cost': rvu_calculated_cost,
+                            }
+                            if provider:
+                                defaults['provider'] = provider
+                            if referral_date:
+                                defaults['referral_date'] = referral_date
+                            if provider and provider.specialty:
+                                defaults['specialty'] = provider.specialty
+                            if order.get("status"):
+                                defaults['status'] = order.get("status").lower()
+                            if order.get('encounterid'):
+                                defaults['athena_encounter_id'] = order.get('encounterid')
+                            if documenttypeid:
+                                defaults['documenttypeid'] = documenttypeid
+
                             referral, created = Referral.objects.update_or_create(
                                 athena_document_id=order.get('orderid'),
-                                defaults={
-                                    'patient': patient,
-                                    'provider': provider, # This can now be None
-                                    'referral_date': referral_date,
-                                    'specialty': provider.specialty if provider else '', # Use provider specialty if available
-                                    'status': (order.get("status") or "pending").lower(),
-                                    'athena_encounter_id': order.get('encounterid'),
-                                    'cost_value': Decimal("0.00"), # Default to 0.00 if not available
-                                    'in_network': provider.is_in_network if provider else False, # False if no provider
-                                }
+                                defaults=defaults
                             )
                             if created:
                                 referrals_created_count += 1

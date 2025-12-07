@@ -64,6 +64,16 @@
     <div>{{ out_network }}</div>
   </div>
 
+  <div class="tile">
+    <strong>Total Leakage Cost</strong>
+    <div>${{ total_leakage_cost|floatformat:2 }}</div>
+  </div>
+
+  <div class="tile">
+    <strong>Average Leakage Cost</strong>
+    <div>${{ average_leakage_cost|floatformat:2 }}</div>
+  </div>
+
   <!-- Clickable metrics with explanations -->
   <a href="{% url 'analytics:metric_detail' 'in_network_rate' %}" class="tile tile-link">
     <strong>In‑network rate</strong>

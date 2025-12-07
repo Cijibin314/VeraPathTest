@@ -23,7 +23,7 @@ class ReferralForm(forms.Form):
     )
     patient_insurance_id = forms.CharField(label='Payer', max_length=64, required=False)
     ordertypeid = forms.IntegerField(
-        label='Referral Order Type', 
+        label='Referral Order Type',
         required=True,
         help_text="The specific clinical service being ordered. Used for billing and clinical documentation."
     )
@@ -44,3 +44,6 @@ class ReferralForm(forms.Form):
         print(f"DEBUG: Final specialty choices: {self.fields['specialty'].choices}") # Debugging line
     # cost_value = forms.DecimalField(label='Cost Value', max_digits=10, decimal_places=2)
     # status = forms.ChoiceField(label='Status', choices=Referral.Status.choices, initial=Referral.Status.PENDING)
+
+class CPTCodeMappingUploadForm(forms.Form):
+    file = forms.FileField()

@@ -21,6 +21,10 @@ class Practice(models.Model):
     name = models.CharField(max_length=200)
     athena_practice_id = models.CharField(max_length=50, unique=True)
     location = models.CharField(max_length=200, blank=True, null=True)
+    work_gpci = models.DecimalField(max_digits=5, decimal_places=3, default=1.0, null=True, blank=True)
+    pe_gpci = models.DecimalField(max_digits=5, decimal_places=3, default=1.0, null=True, blank=True)
+    mp_gpci = models.DecimalField(max_digits=5, decimal_places=3, default=1.0, null=True, blank=True)
+    conversion_factor = models.DecimalField(max_digits=10, decimal_places=2, default=33.0, null=True, blank=True)
 
     def __str__(self):
         return self.name
@@ -100,7 +104,8 @@ class Referral(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     in_network = models.BooleanField(default=True)
     is_urgent = models.BooleanField(default=False)
-    cost_value = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    documenttypeid = models.CharField(max_length=50, blank=True, null=True)
+    rvu_cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     referral_date = models.DateField()
     suggested_provider_ids = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -162,3 +167,16 @@ class ImportLog(models.Model):
 
     def __str__(self) -> str:
         return f"{self.task_name}: {self.status} at {self.last_run_at:%Y-%m-%d %H:%M}"
+
+
+class CPTCodeMapping(models.Model):
+    ordertypeid = models.CharField(max_length=50, help_text="The ID of the referral order type from Athena.", null=True)
+    name = models.CharField(max_length=255, help_text="The human-readable name of the referral order type.")
+    cpt_code = models.CharField(max_length=10, help_text="The CPT code to use for estimation.")
+    work_rvu = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    non_fac_pe_rvu = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    fac_pe_rvu = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    mp_rvu = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+
+    def __str__(self):
+        return f"{self.name} -> {self.cpt_code}"
