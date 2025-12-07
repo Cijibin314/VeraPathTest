@@ -31,5 +31,6 @@ urlpatterns = [
     path('patient-insurances/<str:patient_id>/', views.get_patient_insurances_ajax, name='get_patient_insurances_ajax'),
     path('management/', views.management, name='management'),
     path('management/stream-command/', views.stream_command_view, name='stream_command_view'),
+    path('reports/quarterly/', views.generate_quarterly_report, name='generate_quarterly_report'),
 
 ]

@@ -88,7 +88,9 @@ def dashboard(request):
     completed = referrals_in_period.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
     completion_rate = (completed / total * 100.0) if total else 0
 
-    avg_days_to_specialist = (sum(durations_sched) / len(durations_sched)) if durations_sched else 0
+    query_params = request.GET.copy()
+    download_pdf_url = reverse('analytics:generate_quarterly_report') + '?' + query_params.urlencode() + '&format=pdf'
+    download_csv_url = reverse('analytics:generate_quarterly_report') + '?' + query_params.urlencode() + '&format=csv'
 
     context = {
         'total': total,
@@ -97,11 +99,14 @@ def dashboard(request):
         'in_network_rate': in_network_rate,
         'out_network_rate': out_network_rate,
         'completion_rate': completion_rate,
-        'avg_days_to_specialist': avg_days_to_specialist,
         'total_leakage_cost': total_leakage_cost,
         'average_leakage_cost': average_leakage_cost,
         'debug_message': debug_message,
         'selected_quarters': selected_quarters,
+        'current_year': timezone.now().year,
+        'current_month': timezone.now().month,
+        'download_pdf_url': download_pdf_url,
+        'download_csv_url': download_csv_url,
     }
     return render(request, 'analytics/dashboard.html', context)
 
@@ -221,15 +226,9 @@ def get_provider_metrics():
             continue
         in_net = refs.filter(in_network=True).count()
         completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
-        durations = [
-            (r.completed_at - r.created_at).days
-            for r in refs.filter(completed_at__isnull=False)
-        ]
-        avg_days = (sum(durations) / len(durations)) if durations else 0
         metrics[provider.id] = {
             'in_network_rate': in_net / total,
             'completion_rate': completed / total,
-            'avg_days': avg_days,
         }
     return metrics
 
@@ -505,23 +504,6 @@ def specialty_dashboard(request):
         avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
         avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or 0
         retained_revenue = in_network * avg_in_cost
-        durations_completion = [
-            (ref.completed_at.date() - ref.referral_date).days
-            for ref in refs.filter(completed_at__isnull=False)
-        ]
-        median_days_completion = median(durations_completion) if durations_completion else 0
-        durations_ack = [
-            (ref.ack_at.date() - ref.referral_date).days
-            for ref in refs.filter(ack_at__isnull=False)
-        ]
-        median_days_ack = median(durations_ack) if durations_ack else 0
-        durations_sched = [
-            (ref.scheduled_at.date() - ref.referral_date).days
-            for ref in refs.filter(scheduled_at__isnull=False)
-        ]
-        median_days_schedule = median(durations_sched) if durations_sched else 0
-        attempts = [ref.history.count() for ref in refs.filter(scheduled_at__isnull=False)]
-        avg_attempts = (sum(attempts) / len(attempts)) if attempts else 0
         in_network_rate = (in_network / total * 100.0) if total else 0
         completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
         completion_rate = (completed / total * 100.0) if total else 0
@@ -535,10 +517,6 @@ def specialty_dashboard(request):
             'leakage_cost': leakage_cost,
             'avg_leakage_cost': avg_leakage_cost,
             'retained_revenue': retained_revenue,
-            'median_days_completion': median_days_completion,
-            'median_days_ack': median_days_ack,
-            'median_days_schedule': median_days_schedule,
-            'avg_attempts': avg_attempts,
         })
     return render(request, 'analytics/specialty_dashboard.html', {'specialty_data': specialty_data})
 
@@ -559,23 +537,6 @@ def specialty_detail(request, specialty):
     avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
     avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or 0
     retained_revenue = in_network * avg_in_cost
-    durations_completion = [
-        (ref.completed_at.date() - ref.referral_date).days
-        for ref in refs.filter(completed_at__isnull=False)
-    ]
-    median_days_completion = median(durations_completion) if durations_completion else 0
-    durations_ack = [
-        (ref.ack_at.date() - ref.referral_date).days
-        for ref in refs.filter(ack_at__isnull=False)
-    ]
-    median_days_ack = median(durations_ack) if durations_ack else 0
-    durations_sched = [
-        (ref.scheduled_at.date() - ref.referral_date).days
-        for ref in refs.filter(scheduled_at__isnull=False)
-    ]
-    median_days_schedule = median(durations_sched) if durations_sched else 0
-    attempts = [ref.history.count() for ref in refs.filter(scheduled_at__isnull=False)]
-    avg_attempts = (sum(attempts) / len(attempts)) if attempts else 0
     in_network_rate = (in_network / total * 100.0) if total else 0
     completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
     completion_rate = (completed / total * 100.0) if total else 0
@@ -590,10 +551,6 @@ def specialty_detail(request, specialty):
         'leakage_cost': leakage_cost,
         'avg_leakage_cost': avg_leakage_cost,
         'retained_revenue': retained_revenue,
-        'median_days_completion': median_days_completion,
-        'median_days_ack': median_days_ack,
-        'median_days_schedule': median_days_schedule,
-        'avg_attempts': avg_attempts,
     }
     return render(request, 'analytics/specialty_detail.html', context)
 
@@ -1900,4 +1857,144 @@ def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
         defaults={"last_run_at": current_run_time, "status": "success", "notes": final_notes}
     )
     yield f"\n{final_notes}"
+
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+import csv
+from weasyprint import HTML
+
+@login_required
+def generate_quarterly_report(request):
+    try:
+        user_practice = request.user.userprofile.practice
+        if user_practice:
+            base_referrals = Referral.objects.filter(Q(provider__practice=user_practice) | Q(provider__isnull=True))
+        else:
+            base_referrals = Referral.objects.all()
+    except (UserProfile.DoesNotExist, AttributeError):
+        base_referrals = Referral.objects.all()
+
+    selected_quarters = request.GET.getlist('quarter')
+    current_year = timezone.now().year
+    
+    q_filters = Q()
+    if selected_quarters:
+        for q in selected_quarters:
+            if q == '1': # Q1: Jan 1 - Mar 31
+                q_filters |= Q(referral_date__gte=datetime(current_year, 1, 1), referral_date__lte=datetime(current_year, 3, 31))
+            elif q == '2': # Q2: Apr 1 - Jun 30
+                q_filters |= Q(referral_date__gte=datetime(current_year, 4, 1), referral_date__lte=datetime(current_year, 6, 30))
+            elif q == '3': # Q3: Jul 1 - Sep 30
+                q_filters |= Q(referral_date__gte=datetime(current_year, 7, 1), referral_date__lte=datetime(current_year, 9, 30))
+            elif q == '4': # Q4: Oct 1 - Dec 31
+                q_filters |= Q(referral_date__gte=datetime(current_year, 10, 1), referral_date__lte=datetime(current_year, 12, 31))
+        
+        referrals_in_period = base_referrals.filter(q_filters)
+    else:
+        referrals_in_period = base_referrals
+
+    referrals_with_provider_in_period = referrals_in_period.filter(provider__isnull=False)
+    
+    # Main dashboard metrics
+    total = referrals_in_period.count()
+    in_network = referrals_with_provider_in_period.filter(in_network=True).count()
+    out_network = referrals_with_provider_in_period.filter(in_network=False).count()
+    total_with_provider = referrals_with_provider_in_period.count()
+    in_network_rate = (in_network / total_with_provider * 100.0) if total_with_provider else 0
+    out_network_rate = (out_network / total_with_provider * 100.0) if total_with_provider else 0
+    
+    out_of_network_referrals_with_provider = referrals_in_period.filter(in_network=False, provider__isnull=False)
+    total_leakage_cost = out_of_network_referrals_with_provider.aggregate(total_cost=Sum('rvu_cost'))['total_cost'] or Decimal('0.00')
+    average_leakage_cost = (total_leakage_cost / out_of_network_referrals_with_provider.count()) if out_of_network_referrals_with_provider.count() > 0 else Decimal('0.00')
+    
+    completed = referrals_in_period.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
+    completion_rate = (completed / total * 100.0) if total else 0
+
+    dashboard_metrics = {
+        'total': total,
+        'in_network': in_network,
+        'out_network': out_network,
+        'in_network_rate': in_network_rate,
+        'out_network_rate': out_network_rate,
+        'completion_rate': completion_rate,
+        'total_leakage_cost': total_leakage_cost,
+        'average_leakage_cost': average_leakage_cost,
+    }
+
+    # Specialty metrics
+    specialties = Provider.objects.values_list('specialty', flat=True).distinct()
+    specialty_data = []
+    for spec in specialties:
+        refs = referrals_in_period.filter(provider__specialty=spec)
+        total_spec = refs.count()
+        if spec is None:
+            in_network_spec = 0
+            out_network_spec = 0
+        else:
+            in_network_spec = refs.filter(in_network=True).count()
+            out_network_spec = refs.filter(in_network=False).count()
+        in_network_rate_spec = (in_network_spec / total_spec * 100.0) if total_spec else 0
+        completion_rate_spec = (refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count() / total_spec * 100.0) if total_spec else 0
+        leakage_cost_spec = refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
+        avg_leakage_cost_spec = (leakage_cost_spec / out_network_spec) if out_network_spec else 0
+
+        specialty_data.append({
+            'specialty': spec,
+            'total': total_spec,
+            'in_network': in_network_spec,
+            'out_network': out_network_spec,
+            'in_network_rate': in_network_rate_spec,
+            'completion_rate': completion_rate_spec,
+            'leakage_cost': leakage_cost_spec,
+            'avg_leakage_cost': avg_leakage_cost_spec,
+        })
+    
+    report_format = request.GET.get('format', 'csv').lower()
+
+    if report_format == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="quarterly_report.csv"'
+
+        writer = csv.writer(response)
+        # Write dashboard metrics
+        writer.writerow(['Dashboard Metrics'])
+        writer.writerow(['Metric', 'Value'])
+        for key, value in dashboard_metrics.items():
+            writer.writerow([key.replace('_', ' ').title(), value])
+        
+        writer.writerow([]) # Blank line
+        
+        # Write specialty metrics
+        writer.writerow(['Specialty Metrics'])
+        writer.writerow(['Specialty', 'Total Referrals', 'In-Network', 'Out-of-Network', 'In-Network Rate (%)', 'Completion Rate (%)', 'Total Leakage Cost', 'Average Leakage Cost'])
+        for item in specialty_data:
+            writer.writerow([
+                item['specialty'],
+                item['total'],
+                item['in_network'],
+                item['out_network'],
+                f"{item['in_network_rate']:.2f}",
+                f"{item['completion_rate']:.2f}",
+                f"{item['leakage_cost']:.2f}",
+                f"{item['avg_leakage_cost']:.2f}",
+            ])
+        return response
+
+    elif report_format == 'pdf':
+        html_string = render_to_string('analytics/quarterly_report.html', {
+            'selected_quarters': selected_quarters,
+            'dashboard_metrics': dashboard_metrics,
+            'specialty_data': specialty_data,
+        })
+        
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="quarterly_report.pdf"'
+        
+        HTML(string=html_string).write_pdf(response)
+        
+        return response
+
+    else:
+        return HttpResponse("Invalid report format specified.", status=400)
+
 

@@ -3,6 +3,11 @@
 
 <h2>Referral Metrics</h2>
 
+<div class="report-actions">
+    <a href="{{ download_pdf_url }}" class="btn">Download PDF Report</a>
+    <a href="{{ download_csv_url }}" class="btn">Download CSV Report</a>
+</div>
+
 <form method="get" class="quarter-filter-form">
   <div class="filter-group">
     <label>Filter by Quarter:</label>
@@ -45,6 +50,20 @@
     font-size: 14px;
   }
   .filter-group button:hover {
+    background-color: #0056b3;
+  }
+  .report-actions {
+    margin-bottom: 1rem;
+  }
+  .report-actions .btn {
+    background-color: #007bff;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    text-decoration: none;
+    transition: background-color 0.15s ease-in-out;
+  }
+  .report-actions .btn:hover {
     background-color: #0056b3;
   }
 </style>
@@ -92,11 +111,6 @@
     <small>The % of referrals that reach Completed status</small>
     <div>{{ completion_rate|floatformat:2 }}%</div>
   </a>
-
-  <div class="tile">
-    <strong>Avg days to specialist</strong>
-    <div>{{ avg_days_to_specialist|floatformat:2 }} days</div>
-  </div>
 </div>
 
 <p><a href="{% url 'analytics:specialty_dashboard' %}">View metrics by specialty</a></p>

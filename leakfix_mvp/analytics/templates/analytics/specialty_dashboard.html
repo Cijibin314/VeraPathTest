@@ -10,6 +10,8 @@
       <th>Out‑of‑network referrals</th>
       <th>In‑network rate</th>
       <th>Completion rate</th>
+      <th>Total Leakage Cost</th>
+      <th>Average Leakage Cost</th>
     </tr>
   </thead>
   <tbody>
@@ -21,6 +23,8 @@
       <td>{{ item.out_network }}</td>
       <td>{{ item.in_network_rate|floatformat:2 }}%</td>
       <td>{{ item.completion_rate|floatformat:2 }}%</td>
+      <td>${{ item.leakage_cost|floatformat:2 }}</td>
+      <td>${{ item.avg_leakage_cost|floatformat:2 }}</td>
     </tr>
     {% endfor %}
   </tbody>
