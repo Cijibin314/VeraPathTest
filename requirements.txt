@@ -4,3 +4,4 @@ python-environ
 gunicorn
 openai
 weasyprint
+psycopg2-binary
