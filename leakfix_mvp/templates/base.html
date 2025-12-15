@@ -141,7 +141,7 @@
           <li><a href="{% url 'analytics:provider_list' %}">Providers</a></li>
           <li><a href="{% url 'analytics:referral_list' %}">Referrals</a></li>
           <li><a href="{% url 'analytics:create_referral' %}">New Referral</a></li>
-          <li><a href="{% url 'analytics:invoice_list' %}">Invoices</a></li>
+          {# <li><a href="{% url 'analytics:invoice_list' %}">Invoices</a></li> #}
           {% if user.is_superuser %}
           <li><a href="/admin/">Admin</a></li>
           <li><a href="{% url 'analytics:management' %}">Management</a></li>

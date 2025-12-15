@@ -393,14 +393,14 @@ def set_referral_status(request, pk, state):
 
 
 # --- Invoice views ---
-def invoice_list(request):
-    invoices = Invoice.objects.order_by('-period_start')
-    return render(request, 'analytics/invoice_list.html', {'invoices': invoices})
+# def invoice_list(request):
+#     invoices = Invoice.objects.order_by('-period_start')
+#     return render(request, 'analytics/invoice_list.html', {'invoices': invoices})
 
 
-def invoice_detail(request, pk):
-    invoice = get_object_or_404(Invoice, pk=pk)
-    return render(request, 'analytics/invoice_detail.html', {'invoice': invoice})
+# def invoice_detail(request, pk):
+#     invoice = get_object_or_404(Invoice, pk=pk)
+#     return render(request, 'analytics/invoice_detail.html', {'invoice': invoice})
 
 
 # --- Metric detail view (unchanged from previous step) ---

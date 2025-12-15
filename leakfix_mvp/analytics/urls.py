@@ -15,8 +15,8 @@ urlpatterns = [
     path('referrals/<int:pk>/status/<str:state>/', views.set_referral_status, name='set_referral_status'),
     path('referrals/<int:pk>/update-status-ajax/', views.update_referral_status_ajax, name='update_referral_status_ajax'),
     path('referrals/<int:pk>/delete/', views.delete_referral, name='delete_referral'),
-    path('invoices/', views.invoice_list, name='invoice_list'),
-    path('invoices/<int:pk>/', views.invoice_detail, name='invoice_detail'),
+    # path('invoices/', views.invoice_list, name='invoice_list'),
+    # path('invoices/<int:pk>/', views.invoice_detail, name='invoice_detail'),
     path('metrics/<str:metric>/', views.metric_detail, name='metric_detail'),
 
     path('find-slots/', views.find_provider_slots, name='find_provider_slots'),
