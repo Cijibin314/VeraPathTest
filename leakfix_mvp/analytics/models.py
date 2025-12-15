@@ -181,3 +181,16 @@ class CPTCodeMapping(models.Model):
 
     def __str__(self):
         return f"{self.name} -> {self.cpt_code}"
+
+
+class AuditLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    action = models.CharField(max_length=50)
+    target = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    details = models.TextField(blank=True)
+
+    def __str__(self):
+        if self.user:
+            return f"{self.user.username} {self.action} {self.target} at {self.timestamp}"
+        return f"System {self.action} {self.target} at {self.timestamp}"

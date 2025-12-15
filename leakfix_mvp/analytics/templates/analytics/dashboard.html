@@ -83,16 +83,6 @@
     <div>{{ out_network }}</div>
   </div>
 
-  <div class="tile">
-    <strong>Total Leakage Cost</strong>
-    <div>${{ total_leakage_cost|floatformat:2 }}</div>
-  </div>
-
-  <div class="tile">
-    <strong>Average Leakage Cost</strong>
-    <div>${{ average_leakage_cost|floatformat:2 }}</div>
-  </div>
-
   <!-- Clickable metrics with explanations -->
   <a href="{% url 'analytics:metric_detail' 'in_network_rate' %}" class="tile tile-link">
     <strong>In‑network rate</strong>
@@ -104,6 +94,17 @@
     <strong>Out‑of‑network rate</strong>
     <small>The % of referrals to out-of-network providers</small>
     <div>{{ out_network_rate|floatformat:2 }}%</div>
+  </a>
+
+  <div class="tile">
+    <strong>Total Leakage Cost</strong>
+    <div>${{ total_leakage_cost|floatformat:2 }}</div>
+  </div>
+
+  <a href="{% url 'analytics:metric_detail' 'average_leakage_cost' %}" class="tile tile-link">
+    <strong>Average Leakage Cost</strong>
+    <small>The average cost of an out-of-network referral</small>
+    <div>${{ average_leakage_cost|floatformat:2 }}</div>
   </a>
 
   <a href="{% url 'analytics:metric_detail' 'completion_rate' %}" class="tile tile-link">

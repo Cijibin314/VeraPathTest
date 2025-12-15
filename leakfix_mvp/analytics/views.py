@@ -29,21 +29,16 @@ import logging
 # --- KPI dashboard ---
 @login_required
 def dashboard(request):
-    debug_message = ""
     if request.user.is_superuser:
         base_referrals = Referral.objects.all()
-        debug_message = "Superuser viewing all referrals."
     else:
         try:
             user_practice = request.user.userprofile.practice
             if user_practice:
-                debug_message = f"Filtering referrals for practice: '{user_practice.name}' (Athena ID: {user_practice.athena_practice_id}). "
                 base_referrals = Referral.objects.filter(practice=user_practice)
             else:
-                debug_message = "User is not associated with a practice. No referrals to show."
                 base_referrals = Referral.objects.none()
         except (UserProfile.DoesNotExist, AttributeError):
-            debug_message = "User has no UserProfile or it's incomplete. No referrals to show."
             base_referrals = Referral.objects.none()
 
     # --- Quarter Filtering Logic ---
@@ -103,7 +98,6 @@ def dashboard(request):
         'completion_rate': completion_rate,
         'total_leakage_cost': total_leakage_cost,
         'average_leakage_cost': average_leakage_cost,
-        'debug_message': debug_message,
         'selected_quarters': selected_quarters,
         'current_year': timezone.now().year,
         'current_month': timezone.now().month,
@@ -430,30 +424,38 @@ def metric_detail(request, metric):
         month_refs = Referral.objects.filter(created_at__gte=month_start, created_at__lt=month_end)
 
         if metric == 'in_network_rate':
+            title = "In-Network Rate"
             total = month_refs.count()
             in_net = month_refs.filter(in_network=True).count()
             value = (in_net / total * 100.0) if total else 0
         elif metric == 'out_of_network_rate':
+            title = "Out-of-Network Rate"
             total = month_refs.count()
             out_net = month_refs.filter(in_network=False).count()
             value = (out_net / total * 100.0) if total else 0
         elif metric == 'completion_rate':
+            title = "Completion Rate"
             total = month_refs.count()
             completed = month_refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
             value = (completed / total * 100.0) if total else 0
-        elif metric == 'leakage_cost':
+        elif metric in ['leakage_cost', 'total_leakage_cost']:
+            title = "Total Leakage Cost"
             value = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
         elif metric == 'retained_revenue':
+            title = "Retained Revenue"
             avg_in_cost = month_refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or 0
             in_net_count = month_refs.filter(in_network=True).count()
             value = avg_in_cost * in_net_count
         elif metric == 'referral_volume':
+            title = "Referral Volume"
             value = month_refs.count()
-        elif metric == 'avg_leakage_cost':
+        elif metric in ['avg_leakage_cost', 'average_leakage_cost']:
+            title = "Average Leakage Cost"
             out_count = month_refs.filter(in_network=False).count()
             total_leak = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
             value = (total_leak / out_count) if out_count else 0
         else:
+            title = "Unknown Metric"
             value = 0
 
         values.append(value)
@@ -465,9 +467,9 @@ def metric_detail(request, metric):
     latest_value = values[-1] if values else 0
 
     # Simple trend calculation: compare last value to average
-    if latest_value > avg_value * 1.05:
+    if latest_value > avg_value * Decimal('1.05'):
         trend = "increasing"
-    elif latest_value < avg_value * 0.95:
+    elif latest_value < avg_value * Decimal('0.95'):
         trend = "decreasing"
     else:
         trend = "flat"
@@ -479,7 +481,7 @@ def metric_detail(request, metric):
         suggestion_text = f"(AI suggestion unavailable: {e})"
 
     context = {
-        'metric': metric,
+        'metric': title,
         'labels': labels,
         'values': values,
         'avg_value': avg_value,

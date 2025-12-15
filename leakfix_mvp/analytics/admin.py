@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Payer, Provider, Patient, Referral, Metric, ReferralHistory, Practice, UserProfile, CPTCodeMapping
+from .models import Payer, Provider, Patient, Referral, Metric, ReferralHistory, Practice, UserProfile, CPTCodeMapping, AuditLog
 
 @admin.register(Payer)
 class PayerAdmin(admin.ModelAdmin):
@@ -48,4 +48,20 @@ class ReferralHistoryAdmin(admin.ModelAdmin):
 class CPTCodeMappingAdmin(admin.ModelAdmin):
     list_display = ('ordertypeid', 'name', 'cpt_code', 'work_rvu', 'non_fac_pe_rvu', 'fac_pe_rvu', 'mp_rvu')
     search_fields = ('name', 'cpt_code')
+
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ('timestamp', 'user', 'action', 'target', 'details')
+    list_filter = ('user', 'action', 'timestamp')
+    search_fields = ('user__username', 'target', 'details')
+    readonly_fields = ('timestamp', 'user', 'action', 'target', 'details')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
