@@ -1,16 +1,6 @@
 from django.contrib import admin
 from .models import Payer, Provider, Patient, Referral, Metric, ReferralHistory, Practice, UserProfile, CPTCodeMapping
 
-class ProviderInline(admin.TabularInline):
-    model = Provider
-    extra = 0  # Don't show extra empty forms
-    fields = ('full_name', 'specialty', 'is_in_network')
-    readonly_fields = ('full_name', 'specialty')
-    can_delete = False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
 @admin.register(Payer)
 class PayerAdmin(admin.ModelAdmin):
     list_display = ('code', 'name')
@@ -20,7 +10,6 @@ class PayerAdmin(admin.ModelAdmin):
 class PracticeAdmin(admin.ModelAdmin):
     list_display = ('name', 'athena_practice_id', 'location')
     search_fields = ('name', 'athena_practice_id', 'location')
-    inlines = [ProviderInline]
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
@@ -40,9 +29,9 @@ class PatientAdmin(admin.ModelAdmin):
 
 @admin.register(Referral)
 class ReferralAdmin(admin.ModelAdmin):
-    list_display = ('patient', 'provider', 'payer', 'status', 'in_network', 'rvu_cost', 'referral_date')
-    list_filter = ('status', 'in_network', 'payer')
-    search_fields = ('patient__pseudonym', 'provider__full_name', 'payer__name')
+    list_display = ('patient', 'provider', 'payer', 'practice', 'status', 'in_network', 'rvu_cost', 'referral_date')
+    list_filter = ('status', 'in_network', 'payer', 'practice')
+    search_fields = ('patient__pseudonym', 'provider__full_name', 'payer__name', 'practice__name')
 
 @admin.register(Metric)
 class MetricAdmin(admin.ModelAdmin):

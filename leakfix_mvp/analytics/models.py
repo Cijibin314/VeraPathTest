@@ -37,7 +37,7 @@ class UserProfile(models.Model):
         return self.user.username
 
 class Provider(models.Model):
-    practice = models.ForeignKey(Practice, on_delete=models.CASCADE, null=True, blank=True)
+    practices = models.ManyToManyField(Practice, blank=True)
     npi = models.CharField(max_length=20, blank=True, null=True)
     full_name = models.CharField(max_length=200)
     specialty = models.CharField(max_length=120, blank=True, null=True)
@@ -63,7 +63,7 @@ class Provider(models.Model):
     createencounteroncheckin = models.BooleanField(default=False, blank=True, null=True)
 
     class Meta:
-        unique_together = (('practice', 'providerid'),)
+        unique_together = (('providerid',),)
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.specialty})"
@@ -100,6 +100,7 @@ class Referral(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.PROTECT)
     provider = models.ForeignKey(Provider, on_delete=models.SET_NULL, null=True)
     payer = models.ForeignKey(Payer, on_delete=models.SET_NULL, null=True, blank=True)
+    practice = models.ForeignKey(Practice, on_delete=models.CASCADE, null=True, blank=True)
     specialty = models.CharField(max_length=120, blank=True)  # NEW: record referral specialty
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     in_network = models.BooleanField(default=True)

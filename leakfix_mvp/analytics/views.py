@@ -30,19 +30,21 @@ import logging
 @login_required
 def dashboard(request):
     debug_message = ""
-    try:
-        user_practice = request.user.userprofile.practice
-        if user_practice:
-            debug_message = f"Filtering referrals for practice: '{user_practice.name}' (Athena ID: {user_practice.athena_practice_id}). "
-            base_referrals = Referral.objects.filter(Q(provider__practice=user_practice) | Q(provider__isnull=True))
-        else:
-            user_practice = None
-            debug_message = "User is not associated with a practice. Showing all referrals."
-            base_referrals = Referral.objects.all()
-    except (UserProfile.DoesNotExist, AttributeError):
-        user_practice = None
-        debug_message = "User has no UserProfile or it's incomplete. Showing all referrals."
+    if request.user.is_superuser:
         base_referrals = Referral.objects.all()
+        debug_message = "Superuser viewing all referrals."
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+            if user_practice:
+                debug_message = f"Filtering referrals for practice: '{user_practice.name}' (Athena ID: {user_practice.athena_practice_id}). "
+                base_referrals = Referral.objects.filter(practice=user_practice)
+            else:
+                debug_message = "User is not associated with a practice. No referrals to show."
+                base_referrals = Referral.objects.none()
+        except (UserProfile.DoesNotExist, AttributeError):
+            debug_message = "User has no UserProfile or it's incomplete. No referrals to show."
+            base_referrals = Referral.objects.none()
 
     # --- Quarter Filtering Logic ---
     selected_quarters = request.GET.getlist('quarter')
@@ -122,15 +124,17 @@ from django.db.models.functions import Coalesce
 # --- Provider list ---
 @login_required
 def provider_list(request):
-    try:
-        user_practice = request.user.userprofile.practice
-    except (UserProfile.DoesNotExist, AttributeError):
-        user_practice = None
-
-    if user_practice:
-        providers = list(Provider.objects.filter(practice=user_practice))
-    else:
+    if request.user.is_superuser:
         providers = list(Provider.objects.all())
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+            if user_practice:
+                providers = list(Provider.objects.filter(practices=user_practice))
+            else:
+                providers = []
+        except (UserProfile.DoesNotExist, AttributeError):
+            providers = []
 
     for provider in providers:
         score = 0
@@ -159,15 +163,17 @@ def provider_list(request):
 def provider_search(request):
     query = request.GET.get('q', '').strip()
 
-    try:
-        user_practice = request.user.userprofile.practice
-    except (UserProfile.DoesNotExist, AttributeError):
-        user_practice = None
-
-    if user_practice:
-        providers = Provider.objects.filter(practice=user_practice)
-    else:
+    if request.user.is_superuser:
         providers = Provider.objects.all()
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+            if user_practice:
+                providers = Provider.objects.filter(practices=user_practice)
+            else:
+                providers = Provider.objects.none()
+        except (UserProfile.DoesNotExist, AttributeError):
+            providers = Provider.objects.none()
 
     if query:
         providers = providers.filter(
@@ -296,15 +302,17 @@ def create_referral(request):
 
 @login_required
 def referral_list(request):
-    try:
-        user_practice = request.user.userprofile.practice
-    except (UserProfile.DoesNotExist, AttributeError):
-        user_practice = None
-
-    if user_practice:
-        referrals = Referral.objects.filter(Q(provider__practice=user_practice) | Q(provider__isnull=True))
-    else:
+    if request.user.is_superuser:
         referrals = Referral.objects.all()
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+            if user_practice:
+                referrals = Referral.objects.filter(practice=user_practice)
+            else:
+                referrals = Referral.objects.none()
+        except (UserProfile.DoesNotExist, AttributeError):
+            referrals = Referral.objects.none()
 
     query = request.GET.get('q')
     if query:
@@ -667,15 +675,17 @@ def get_provider_details_ajax(request, providerid):
 def get_sorted_providers_ajax(request):
     specialty = request.GET.get('specialty', '')
     
-    try:
-        user_practice = request.user.userprofile.practice
-    except (UserProfile.DoesNotExist, AttributeError):
-        user_practice = None
-
-    if user_practice:
-        all_providers_qs = Provider.objects.filter(practice=user_practice)
-    else:
+    if request.user.is_superuser:
         all_providers_qs = Provider.objects.all()
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+            if user_practice:
+                all_providers_qs = Provider.objects.filter(practices=user_practice)
+            else:
+                all_providers_qs = Provider.objects.none()
+        except (UserProfile.DoesNotExist, AttributeError):
+            all_providers_qs = Provider.objects.none()
 
     # De-duplicate providers in Python
     unique_providers = []
@@ -779,7 +789,7 @@ def get_provider_departments_ajax(request, providerid=None):
     provider_npi = None
     if providerid:
         try:
-            provider = Provider.objects.get(providerid=providerid, practice=user_practice)
+            provider = Provider.objects.get(providerid=providerid, practices=user_practice)
             provider_npi = provider.npi
         except Provider.DoesNotExist:
             return JsonResponse({'error': 'Provider not found in your practice'}, status=404)
@@ -995,7 +1005,7 @@ def create_referral_order_ajax(request):
 
             # Create local referral
             provider_id = data['provider_id']
-            provider = Provider.objects.get(providerid=provider_id, practice=user_practice)
+            provider = Provider.objects.get(providerid=provider_id, practices=user_practice)
             patient, _ = Patient.objects.get_or_create(original_id=patient_id)
             
             payer = None
@@ -1029,7 +1039,7 @@ def create_referral_order_ajax(request):
                 try:
                     cpt_mapping = CPTCodeMapping.objects.get(ordertypeid=order_type_id)
                     logging.info(f"Found CPTCodeMapping: {cpt_mapping.cpt_code}")
-                    practice = provider.practice
+                    practice = user_practice
                     if practice and practice.work_gpci and practice.pe_gpci and practice.mp_gpci and practice.conversion_factor:
                         logging.info(f"Practice GPCI/CF values: wGPCI={practice.work_gpci}, peGPCI={practice.pe_gpci}, mpGPCI={practice.mp_gpci}, CF={practice.conversion_factor}")
                         logging.info(f"RVU components: wRVU={cpt_mapping.work_rvu}, peRVU={cpt_mapping.non_fac_pe_rvu}, mpRVU={cpt_mapping.mp_rvu}")
@@ -1050,6 +1060,7 @@ def create_referral_order_ajax(request):
             logging.info("--- End RVU Calculation ---")
 
             referral.rvu_cost = rvu_calculated_cost
+            referral.practice = user_practice
             referral.save()
             
             ReferralHistory.objects.create(referral=referral, status=referral.status)
@@ -1571,10 +1582,10 @@ def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
                 continue
 
             provider, created = Provider.objects.update_or_create(
-                practice=practice,
                 providerid=provider_id,
                 defaults=defaults
             )
+            provider.practices.add(practice)
             if created:
                 created_count += 1
             else:
@@ -1722,8 +1733,8 @@ def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
             for patient in paginator.page(page_num).object_list:
                 if not patient.original_id:
                     continue
-                if not patient.original_id.strip() == '60178':
-                    continue
+                # if not patient.original_id.strip() == '60178':
+                #     continue
                 yield(f"Processing patient {patient.original_id}...")
                 for dept_id in department_ids:
                     try:
@@ -1754,7 +1765,7 @@ def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
                                     continue
                                 
                                 try:
-                                    provider = Provider.objects.get(providerid=referring_provider_id, practice=practice)
+                                    provider = Provider.objects.get(providerid=referring_provider_id, practices=practice)
                                 except Provider.DoesNotExist:
                                     logging.info(f"Skipping order {order.get('orderid')} for patient {patient.original_id}: Provider {referring_provider_id} not in local database.")
                                     skipped_count += 1
@@ -1815,6 +1826,7 @@ def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
                                 defaults['athena_encounter_id'] = order.get('encounterid')
                             if documenttypeid:
                                 defaults['documenttypeid'] = documenttypeid
+                            defaults['practice'] = practice
 
                             referral, created = Referral.objects.update_or_create(
                                 athena_document_id=order.get('orderid'),
@@ -1865,14 +1877,17 @@ from weasyprint import HTML
 
 @login_required
 def generate_quarterly_report(request):
-    try:
-        user_practice = request.user.userprofile.practice
-        if user_practice:
-            base_referrals = Referral.objects.filter(Q(provider__practice=user_practice) | Q(provider__isnull=True))
-        else:
-            base_referrals = Referral.objects.all()
-    except (UserProfile.DoesNotExist, AttributeError):
+    if request.user.is_superuser:
         base_referrals = Referral.objects.all()
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+            if user_practice:
+                base_referrals = Referral.objects.filter(practice=user_practice)
+            else:
+                base_referrals = Referral.objects.none()
+        except (UserProfile.DoesNotExist, AttributeError):
+            base_referrals = Referral.objects.none()
 
     selected_quarters = request.GET.getlist('quarter')
     current_year = timezone.now().year
