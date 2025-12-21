@@ -1,8 +1,13 @@
 import hashlib
 from decimal import Decimal
+from django.contrib.auth.models import User # Added this import
+import hashlib
+from decimal import Decimal
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
+from encrypted_model_fields.fields import EncryptedCharField, EncryptedTextField
+
 
 class Payer(models.Model):
     code = models.CharField(max_length=64, unique=True)
@@ -11,11 +16,13 @@ class Payer(models.Model):
     def __str__(self) -> str:
         return self.name
 
+
 class Hospital(models.Model):
     name = models.CharField(max_length=200)
 
     def __str__(self) -> str:
         return self.name
+
 
 class Practice(models.Model):
     name = models.CharField(max_length=200)
@@ -29,12 +36,14 @@ class Practice(models.Model):
     def __str__(self):
         return self.name
 
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     practice = models.ForeignKey(Practice, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
         return self.user.username
+
 
 class Provider(models.Model):
     practices = models.ManyToManyField(Practice, blank=True)
@@ -68,21 +77,21 @@ class Provider(models.Model):
     def __str__(self) -> str:
         return f"{self.full_name} ({self.specialty})"
 
+
 class Patient(models.Model):
-    original_id = models.CharField(max_length=120, unique=True)
+    original_id = EncryptedCharField(max_length=120, unique=True)
     pseudonym = models.CharField(max_length=64, unique=True, editable=False)
-    first_name = models.CharField(max_length=100, blank=True, null=True)
-    last_name = models.CharField(max_length=100, blank=True, null=True)
+    first_name = EncryptedCharField(max_length=100, blank=True, null=True)
+    last_name = EncryptedCharField(max_length=100, blank=True, null=True)
 
     def save(self, *args, **kwargs) -> None:
         if not self.pseudonym:
-            self.pseudonym = hashlib.sha256(self.original_id.encode()).hexdigest()
+            self.pseudonym = hashlib.sha256(str(self.original_id).encode()).hexdigest()
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        if self.first_name and self.last_name:
-            return f"{self.first_name} {self.last_name} (ID: {self.original_id})"
         return f"Patient {self.pseudonym[:8]}"
+
 
 class Referral(models.Model):
     class Status(models.TextChoices):
@@ -117,9 +126,9 @@ class Referral(models.Model):
     athena_document_id = models.CharField(max_length=50, blank=True, null=True)
     athena_encounter_id = models.CharField(max_length=50, blank=True, null=True)
     athena_department_id = models.CharField(max_length=50, blank=True, null=True)
-    provider_note = models.TextField(blank=True)
-    note_to_patient = models.TextField(blank=True)
-    visit_summary = models.TextField(blank=True, null=True)
+    provider_note = EncryptedTextField(blank=True)
+    note_to_patient = EncryptedTextField(blank=True)
+    visit_summary = EncryptedTextField(blank=True, null=True)
 
     def __str__(self) -> str:
         return f"Referral ({self.patient}) → {self.provider}"

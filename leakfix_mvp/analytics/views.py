@@ -327,8 +327,19 @@ def referral_list(request):
     return render(request, 'analytics/referral_list.html', context)
 
 
+@login_required
 def referral_detail(request, pk):
-    referral = get_object_or_404(Referral, pk=pk)
+    if request.user.is_superuser:
+        referral = get_object_or_404(Referral, pk=pk)
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+        except (UserProfile.DoesNotExist, AttributeError):
+            # If a non-superuser has no practice, they can't see any referrals.
+            return render(request, 'analytics/referral_detail.html', {'error': 'You are not associated with a practice.'})
+            
+        referral = get_object_or_404(Referral, pk=pk, practice=user_practice)
+
     return render(request, 'analytics/referral_detail.html', {'referral': referral})
 
 @login_required
@@ -373,8 +384,18 @@ def referral_detail_api(request, pk):
         return JsonResponse({'error': 'An unexpected error occurred.'}, status=500)
 
 
+@login_required
 def set_referral_status(request, pk, state):
-    referral = get_object_or_404(Referral, pk=pk)
+    if request.user.is_superuser:
+        referral = get_object_or_404(Referral, pk=pk)
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+        except (UserProfile.DoesNotExist, AttributeError):
+            return redirect('analytics:dashboard') 
+            
+        referral = get_object_or_404(Referral, pk=pk, practice=user_practice)
+
     if state in Referral.Status.values:
         now = timezone.now()
         if state == Referral.Status.ACKNOWLEDGED:
@@ -403,7 +424,20 @@ def set_referral_status(request, pk, state):
 
 
 # --- Metric detail view (unchanged from previous step) ---
+@login_required
 def metric_detail(request, metric):
+    if request.user.is_superuser:
+        base_referrals = Referral.objects.all()
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+            if user_practice:
+                base_referrals = Referral.objects.filter(practice=user_practice)
+            else:
+                base_referrals = Referral.objects.none()
+        except (UserProfile.DoesNotExist, AttributeError):
+            base_referrals = Referral.objects.none()
+
     today = timezone.now().date()
     start_date = (today.replace(day=1) - timedelta(days=365)).replace(day=1)
 
@@ -420,7 +454,7 @@ def metric_detail(request, metric):
 
     for month_start in months:
         month_end = (month_start + timedelta(days=32)).replace(day=1)
-        month_refs = Referral.objects.filter(created_at__gte=month_start, created_at__lt=month_end)
+        month_refs = base_referrals.filter(created_at__gte=month_start, created_at__lt=month_end)
 
         if metric == 'in_network_rate':
             title = "In-Network Rate"
@@ -493,29 +527,52 @@ def metric_detail(request, metric):
     return render(request, 'analytics/metric_detail.html', context)
 
 # --- Specialty dashboard ---
+@login_required
 def specialty_dashboard(request):
     """
     Compute metrics for each provider specialty.  This allows clinics
     to compare leakage and completion metrics across specialties.
     """
-    specialties = Provider.objects.values_list('specialty', flat=True).distinct()
+    if request.user.is_superuser:
+        base_referrals = Referral.objects.all()
+        providers = Provider.objects.all()
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+            if user_practice:
+                base_referrals = Referral.objects.filter(practice=user_practice)
+                providers = Provider.objects.filter(practices=user_practice)
+            else:
+                base_referrals = Referral.objects.none()
+                providers = Provider.objects.none()
+        except (UserProfile.DoesNotExist, AttributeError):
+            base_referrals = Referral.objects.none()
+            providers = Provider.objects.none()
+
+    specialties = providers.values_list('specialty', flat=True).distinct()
     specialty_data = []
     for spec in specialties:
-        refs = Referral.objects.filter(provider__specialty=spec)
-        total = refs.count()
         if spec is None:
-            in_network = 0
-            out_network = 0
-        else:
-            in_network = refs.filter(in_network=True).count()
-            out_network = refs.filter(in_network=False).count()
+            continue
+        
+        refs = base_referrals.filter(provider__specialty=spec)
+        total = refs.count()
+
+        in_network = refs.filter(in_network=True).count()
+        out_network = refs.filter(in_network=False).count()
+        
         leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
         avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
-        avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or 0
+        
+        avg_in_cost_agg = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))
+        avg_in_cost = avg_in_cost_agg['avg'] or 0
+
         retained_revenue = in_network * avg_in_cost
         in_network_rate = (in_network / total * 100.0) if total else 0
+        
         completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
         completion_rate = (completed / total * 100.0) if total else 0
+        
         specialty_data.append({
             'specialty': spec,
             'total': total,
@@ -530,11 +587,24 @@ def specialty_dashboard(request):
     return render(request, 'analytics/specialty_dashboard.html', {'specialty_data': specialty_data})
 
 
+@login_required
 def specialty_detail(request, specialty):
     """
     Compute metrics for a single provider specialty.
     """
-    refs = Referral.objects.filter(provider__specialty=specialty)
+    if request.user.is_superuser:
+        base_referrals = Referral.objects.all()
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+            if user_practice:
+                base_referrals = Referral.objects.filter(practice=user_practice)
+            else:
+                base_referrals = Referral.objects.none()
+        except (UserProfile.DoesNotExist, AttributeError):
+            base_referrals = Referral.objects.none()
+
+    refs = base_referrals.filter(provider__specialty=specialty)
     total = refs.count()
     if specialty == 'None':
         in_network = 0
@@ -544,7 +614,10 @@ def specialty_detail(request, specialty):
         out_network = refs.filter(in_network=False).count()
     leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
     avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
-    avg_in_cost = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or 0
+    
+    avg_in_cost_agg = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))
+    avg_in_cost = avg_in_cost_agg['avg'] or 0
+
     retained_revenue = in_network * avg_in_cost
     in_network_rate = (in_network / total * 100.0) if total else 0
     completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
@@ -1389,13 +1462,24 @@ def stream_command_view(request):
 
     return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
 # --- Delete referral ---
+@login_required
 def delete_referral(request, pk):
     """
     Delete a referral by its primary key.  Redirect back to the dashboard.
     """
-    referral = get_object_or_404(Referral, pk=pk)
+    if request.user.is_superuser:
+        referral = get_object_or_404(Referral, pk=pk)
+    else:
+        try:
+            user_practice = request.user.userprofile.practice
+        except (UserProfile.DoesNotExist, AttributeError):
+            # If a non-superuser has no practice, they can't delete any referrals.
+            return redirect('analytics:dashboard') # Or show an error
+            
+        referral = get_object_or_404(Referral, pk=pk, practice=user_practice)
+
     referral.delete()
-    return redirect('analytics_dashboard')
+    return redirect('analytics:dashboard')
 
 
 @login_required
