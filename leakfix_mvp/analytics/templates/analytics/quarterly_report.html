@@ -49,9 +49,9 @@
             <tr>
                 <th>Specialty</th>
                 <th>Total Referrals</th>
-                <th>In-Network</th>
-                <th>Out-of-Network</th>
-                <th>In-Network Rate (%)</th>
+                <th>In-Practice-Network</th>
+                <th>Out-of-Practice-Network</th>
+                <th>In-Practice-Network Rate (%)</th>
                 <th>Completion Rate (%)</th>
                 <th>Total Leakage Cost</th>
                 <th>Average Leakage Cost</th>
@@ -62,9 +62,9 @@
             <tr>
                 <td>{{ item.specialty }}</td>
                 <td>{{ item.total }}</td>
-                <td>{{ item.in_network }}</td>
-                <td>{{ item.out_network }}</td>
-                <td>{{ item.in_network_rate|floatformat:2 }}%</td>
+                <td>{{ item.in_practice_network }}</td>
+                <td>{{ item.out_practice_network }}</td>
+                <td>{{ item.in_practice_network_rate|floatformat:2 }}%</td>
                 <td>{{ item.completion_rate|floatformat:2 }}%</td>
                 <td>${{ item.leakage_cost|floatformat:2 }}</td>
                 <td>${{ item.avg_leakage_cost|floatformat:2 }}</td>

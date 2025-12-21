@@ -75,25 +75,25 @@
     <div>{{ total }}</div>
   </div>
   <div class="tile">
-    <strong>In‑network referrals</strong>
-    <div>{{ in_network }}</div>
+    <strong>In‑practice‑network referrals</strong>
+    <div>{{ in_practice_network }}</div>
   </div>
   <div class="tile">
-    <strong>Out‑of‑network referrals</strong>
-    <div>{{ out_network }}</div>
+    <strong>Out‑of‑practice‑network referrals</strong>
+    <div>{{ out_practice_network }}</div>
   </div>
 
   <!-- Clickable metrics with explanations -->
   <a href="{% url 'analytics:metric_detail' 'in_network_rate' %}" class="tile tile-link">
-    <strong>In‑network rate</strong>
-    <small>The % of referrals to in‑network providers</small>
-    <div>{{ in_network_rate|floatformat:2 }}%</div>
+    <strong>In‑practice‑network rate</strong>
+    <small>The % of referrals to in‑practice‑network providers</small>
+    <div>{{ in_practice_network_rate|floatformat:2 }}%</div>
   </a>
 
   <a href="{% url 'analytics:metric_detail' 'out_of_network_rate' %}" class="tile tile-link">
-    <strong>Out‑of‑network rate</strong>
-    <small>The % of referrals to out-of-network providers</small>
-    <div>{{ out_network_rate|floatformat:2 }}%</div>
+    <strong>Out‑of‑practice‑network rate</strong>
+    <small>The % of referrals to out-of-practice-network providers</small>
+    <div>{{ out_practice_network_rate|floatformat:2 }}%</div>
   </a>
 
   <div class="tile">

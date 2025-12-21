@@ -65,20 +65,20 @@ def dashboard(request):
     referrals_with_provider_in_period = referrals_in_period.filter(provider__isnull=False)
     
     total = referrals_in_period.count()
-    in_network = referrals_with_provider_in_period.filter(in_network=True).count()
-    out_network = referrals_with_provider_in_period.filter(in_network=False).count()
+    in_practice_network = referrals_with_provider_in_period.filter(in_network=True).count()
+    out_practice_network = referrals_with_provider_in_period.filter(in_network=False).count()
     durations_sched = [
         (ref.scheduled_at.date() - ref.referral_date).days
         for ref in referrals_in_period.filter(scheduled_at__isnull=False)
     ]
 
     total_with_provider = referrals_in_period.filter(provider__isnull=False).count()
-    in_network_rate = (in_network / total_with_provider * 100.0) if total_with_provider else 0
-    out_network_rate = (out_network / total_with_provider * 100.0) if total_with_provider else 0
+    in_practice_network_rate = (in_practice_network / total_with_provider * 100.0) if total_with_provider else 0
+    out_practice_network_rate = (out_practice_network / total_with_provider * 100.0) if total_with_provider else 0
     
-    out_of_network_referrals_with_provider = referrals_in_period.filter(in_network=False, provider__isnull=False)
-    total_leakage_cost = out_of_network_referrals_with_provider.aggregate(total_cost=Sum('rvu_cost'))['total_cost'] or Decimal('0.00')
-    average_leakage_cost = (total_leakage_cost / out_of_network_referrals_with_provider.count()) if out_of_network_referrals_with_provider.count() > 0 else Decimal('0.00')
+    out_of_practice_network_referrals_with_provider = referrals_in_period.filter(in_network=False, provider__isnull=False)
+    total_leakage_cost = out_of_practice_network_referrals_with_provider.aggregate(total_cost=Sum('rvu_cost'))['total_cost'] or Decimal('0.00')
+    average_leakage_cost = (total_leakage_cost / out_of_practice_network_referrals_with_provider.count()) if out_of_practice_network_referrals_with_provider.count() > 0 else Decimal('0.00')
 
 
     completed = referrals_in_period.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
@@ -90,10 +90,10 @@ def dashboard(request):
 
     context = {
         'total': total,
-        'in_network': in_network,
-        'out_network': out_network,
-        'in_network_rate': in_network_rate,
-        'out_network_rate': out_network_rate,
+        'in_practice_network': in_practice_network,
+        'out_practice_network': out_practice_network,
+        'in_practice_network_rate': in_practice_network_rate,
+        'out_practice_network_rate': out_practice_network_rate,
         'completion_rate': completion_rate,
         'total_leakage_cost': total_leakage_cost,
         'average_leakage_cost': average_leakage_cost,
@@ -142,10 +142,10 @@ def provider_list(request):
         if provider.primary_department: score += 1
         provider.completeness_score = score
 
-        # Use the is_in_network field from the model
-        provider.is_preferred = provider.is_in_network
+        # Use the is_in_practice_network field from the model
+        provider.is_preferred = provider.is_in_practice_network
 
-    # Sort: preferred (in-network) providers first, then by completeness score
+    # Sort: preferred (in-practice-network) providers first, then by completeness score
     providers.sort(key=lambda p: (p.is_preferred, p.completeness_score), reverse=True)
 
     return render(request, 'analytics/provider_list.html', {'providers': providers})
@@ -190,10 +190,10 @@ def provider_search(request):
         if provider.primary_department: score += 1
         provider.completeness_score = score
 
-        # Use the is_in_network field from the model
-        provider.is_preferred = provider.is_in_network
+        # Use the is_in_practice_network field from the model
+        provider.is_preferred = provider.is_in_practice_network
 
-    # Sort: preferred (in-network) providers first, then by completeness score
+    # Sort: preferred (in-practice-network) providers first, then by completeness score
     providers = list(providers) # Convert queryset to list for sorting
     providers.sort(key=lambda p: (p.is_preferred, p.completeness_score), reverse=True)
 
@@ -223,10 +223,10 @@ def get_provider_metrics():
         total = refs.count()
         if total == 0:
             continue
-        in_net = refs.filter(in_network=True).count()
+        in_practice_network_count = refs.filter(in_network=True).count()
         completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
         metrics[provider.id] = {
-            'in_network_rate': in_net / total,
+            'in_practice_network_rate': in_practice_network_count / total,
             'completion_rate': completed / total,
         }
     return metrics
@@ -245,7 +245,7 @@ def get_suggested_providers(referral, max_results=3):
         m = metrics.get(p.id, None)
         if m:
             score = (
-                0.5 * m['in_network_rate']
+                0.5 * m['in_practice_network_rate']
                 + 0.3 * m['completion_rate']
                 - 0.2 * (m['avg_days'] / 30.0)
             )
@@ -263,8 +263,8 @@ def create_referral(request):
         form = ReferralForm(request.POST)
         if form.is_valid():
             provider = form.cleaned_data['provider']
-            # The in_network status is now determined by the provider's own flag
-            is_in_network = provider.is_in_network
+            # The in_practice_network status is now determined by the provider's own flag
+            is_in_practice_network = provider.is_in_practice_network
 
             patient_id = form.cleaned_data['patient_id']
             patient, _ = Patient.objects.get_or_create(original_id=patient_id)
@@ -278,7 +278,7 @@ def create_referral(request):
                 provider=provider,
                 payer=payer,
                 specialty=form.cleaned_data.get('specialty') or provider.specialty or '',
-                in_network=is_in_network, # Set automatically from provider
+                in_network=is_in_practice_network, # Set automatically from provider's in_practice_network flag
                 is_urgent=form.cleaned_data.get('is_urgent', False),
                 suggested_provider_ids=""
             )
@@ -457,12 +457,12 @@ def metric_detail(request, metric):
         month_refs = base_referrals.filter(created_at__gte=month_start, created_at__lt=month_end)
 
         if metric == 'in_network_rate':
-            title = "In-Network Rate"
+            title = "In-Practice-Network Rate"
             total = month_refs.count()
             in_net = month_refs.filter(in_network=True).count()
             value = (Decimal(in_net) / Decimal(total) * 100) if total else Decimal('0')
         elif metric == 'out_of_network_rate':
-            title = "Out-of-Network Rate"
+            title = "Out-of-Practice-Network Rate"
             total = month_refs.count()
             out_net = month_refs.filter(in_network=False).count()
             value = (Decimal(out_net) / Decimal(total) * 100) if total else Decimal('0')
@@ -558,17 +558,17 @@ def specialty_dashboard(request):
         refs = base_referrals.filter(provider__specialty=spec)
         total = refs.count()
 
-        in_network = refs.filter(in_network=True).count()
-        out_network = refs.filter(in_network=False).count()
+        in_practice_network = refs.filter(in_network=True).count()
+        out_practice_network = refs.filter(in_network=False).count()
         
         leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
-        avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
+        avg_leakage_cost = (leakage_cost / out_practice_network) if out_practice_network else 0
         
         avg_in_cost_agg = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))
         avg_in_cost = avg_in_cost_agg['avg'] or 0
 
-        retained_revenue = in_network * avg_in_cost
-        in_network_rate = (in_network / total * 100.0) if total else 0
+        retained_revenue = in_practice_network * avg_in_cost
+        in_practice_network_rate = (in_practice_network / total * 100.0) if total else 0
         
         completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
         completion_rate = (completed / total * 100.0) if total else 0
@@ -576,9 +576,9 @@ def specialty_dashboard(request):
         specialty_data.append({
             'specialty': spec,
             'total': total,
-            'in_network': in_network,
-            'out_network': out_network,
-            'in_network_rate': in_network_rate,
+            'in_practice_network': in_practice_network,
+            'out_practice_network': out_practice_network,
+            'in_practice_network_rate': in_practice_network_rate,
             'completion_rate': completion_rate,
             'leakage_cost': leakage_cost,
             'avg_leakage_cost': avg_leakage_cost,
@@ -607,28 +607,28 @@ def specialty_detail(request, specialty):
     refs = base_referrals.filter(provider__specialty=specialty)
     total = refs.count()
     if specialty == 'None':
-        in_network = 0
-        out_network = 0
+        in_practice_network = 0
+        out_practice_network = 0
     else:
-        in_network = refs.filter(in_network=True).count()
-        out_network = refs.filter(in_network=False).count()
+        in_practice_network = refs.filter(in_network=True).count()
+        out_practice_network = refs.filter(in_network=False).count()
     leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
-    avg_leakage_cost = (leakage_cost / out_network) if out_network else 0
+    avg_leakage_cost = (leakage_cost / out_practice_network) if out_practice_network else 0
     
     avg_in_cost_agg = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))
     avg_in_cost = avg_in_cost_agg['avg'] or 0
 
-    retained_revenue = in_network * avg_in_cost
-    in_network_rate = (in_network / total * 100.0) if total else 0
+    retained_revenue = in_practice_network * avg_in_cost
+    in_practice_network_rate = (in_practice_network / total * 100.0) if total else 0
     completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
     completion_rate = (completed / total * 100.0) if total else 0
 
     context = {
         'specialty': specialty,
         'total': total,
-        'in_network': in_network,
-        'out_network': out_network,
-        'in_network_rate': in_network_rate,
+        'in_practice_network': in_practice_network,
+        'out_practice_network': out_practice_network,
+        'in_practice_network_rate': in_practice_network_rate,
         'completion_rate': completion_rate,
         'leakage_cost': leakage_cost,
         'avg_leakage_cost': avg_leakage_cost,
@@ -1095,7 +1095,7 @@ def create_referral_order_ajax(request):
                 provider=provider,
                 payer=payer,
                 specialty=specialty or provider.specialty or '',
-                in_network=provider.is_in_network,
+                in_network=provider.is_in_practice_network,
                 is_urgent=data.get('is_urgent', False),
                 status=status,
                 referral_date=datetime.now().date(),

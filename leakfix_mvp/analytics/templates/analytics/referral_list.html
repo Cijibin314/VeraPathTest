@@ -29,14 +29,14 @@
                             <th>Specialty</th>
                             <th>Date</th>
                             <th>Status</th>
-                            <th>In-Network</th>
+                            <th>In-Practice-Network</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for referral in referrals %}
                         <tr>
-                            <td>{{ referral.patient }}</td>
+                            <td>{{ referral.patient.first_name }} {{ referral.patient.last_name }}</td>
                             <td>{% if referral.provider %}{{ referral.provider }}{% endif %}</td>
                             <td>{{ referral.specialty }}</td>
                             <td>{{ referral.referral_date }}</td>

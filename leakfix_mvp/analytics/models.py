@@ -55,7 +55,7 @@ class Provider(models.Model):
     state = models.CharField(max_length=50, blank=True, null=True)
     accepting_new_patients = models.BooleanField(default=True, blank=True, null=True)
     primary_department = models.CharField(max_length=200, blank=True, null=True)
-    is_in_network = models.BooleanField(default=False)
+    is_in_practice_network = models.BooleanField(default=False)
 
     # New fields from JSON structure
     providerid = models.IntegerField(blank=True, null=True)
