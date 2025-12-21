@@ -21,11 +21,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create a non-root user
+RUN addgroup --system app && adduser --system --group app
+
 # Copy the rest of the application's code into the container
 COPY . .
 
 # Make the entrypoint script executable
 RUN chmod +x /app/entrypoint.sh
+
+# Change ownership of the app directory
+RUN chown -R app:app /app
+
+# Switch to the non-root user
+USER app
 
 # Expose the port the app runs on
 EXPOSE 8000

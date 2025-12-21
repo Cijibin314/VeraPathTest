@@ -21,10 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Initialize environment reader and read from `.env` file if it exists.
 env = environ.Env(
     DEBUG=(bool, False),
+    PRODUCTION=(bool, False),
     SECRET_KEY=(str, 'change-me'),
     DATABASE_URL=(str, f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
     ATHENA_CLIENT_ID=(str, ''),
     ATHENA_CLIENT_SECRET=(str, ''),
+    ALLOWED_HOSTS=(list, []),
 )
 environ.Env.read_env(str(BASE_DIR / '.env'))
 
@@ -33,8 +35,19 @@ SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
+PRODUCTION = env('PRODUCTION')
 
-ALLOWED_HOSTS: list[str] = ['*']
+ALLOWED_HOSTS: list[str] = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+
+# Security settings for production environments
+if PRODUCTION:
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+
 
 # Application definition
 INSTALLED_APPS = [

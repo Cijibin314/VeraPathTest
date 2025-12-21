@@ -47,7 +47,6 @@ def dashboard(request):
     
     q_filters = Q()
     if selected_quarters:
-        debug_message += f"Filtering by quarters: {', '.join(selected_quarters)}. "
         for q in selected_quarters:
             if q == '1': # Q1: Jan 1 - Mar 31
                 q_filters |= Q(referral_date__gte=datetime(current_year, 1, 1), referral_date__lte=datetime(current_year, 3, 31))
@@ -427,44 +426,44 @@ def metric_detail(request, metric):
             title = "In-Network Rate"
             total = month_refs.count()
             in_net = month_refs.filter(in_network=True).count()
-            value = (in_net / total * 100.0) if total else 0
+            value = (Decimal(in_net) / Decimal(total) * 100) if total else Decimal('0')
         elif metric == 'out_of_network_rate':
             title = "Out-of-Network Rate"
             total = month_refs.count()
             out_net = month_refs.filter(in_network=False).count()
-            value = (out_net / total * 100.0) if total else 0
+            value = (Decimal(out_net) / Decimal(total) * 100) if total else Decimal('0')
         elif metric == 'completion_rate':
             title = "Completion Rate"
             total = month_refs.count()
             completed = month_refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
-            value = (completed / total * 100.0) if total else 0
+            value = (Decimal(completed) / Decimal(total) * 100) if total else Decimal('0')
         elif metric in ['leakage_cost', 'total_leakage_cost']:
             title = "Total Leakage Cost"
-            value = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
+            value = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or Decimal('0')
         elif metric == 'retained_revenue':
             title = "Retained Revenue"
-            avg_in_cost = month_refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or 0
+            avg_in_cost = month_refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or Decimal('0')
             in_net_count = month_refs.filter(in_network=True).count()
             value = avg_in_cost * in_net_count
         elif metric == 'referral_volume':
             title = "Referral Volume"
-            value = month_refs.count()
+            value = Decimal(month_refs.count())
         elif metric in ['avg_leakage_cost', 'average_leakage_cost']:
             title = "Average Leakage Cost"
             out_count = month_refs.filter(in_network=False).count()
-            total_leak = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
-            value = (total_leak / out_count) if out_count else 0
+            total_leak = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or Decimal('0')
+            value = (total_leak / out_count) if out_count else Decimal('0')
         else:
             title = "Unknown Metric"
-            value = 0
+            value = Decimal('0')
 
         values.append(value)
 
     # Summary stats
-    avg_value = (sum(values) / len(values)) if values else 0
-    max_value = max(values) if values else 0
-    min_value = min(values) if values else 0
-    latest_value = values[-1] if values else 0
+    avg_value = (sum(values) / len(values)) if values else Decimal('0')
+    max_value = max(values) if values else Decimal('0')
+    min_value = min(values) if values else Decimal('0')
+    latest_value = values[-1] if values else Decimal('0')
 
     # Simple trend calculation: compare last value to average
     if latest_value > avg_value * Decimal('1.05'):
