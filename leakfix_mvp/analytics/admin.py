@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Payer, Provider, Patient, Referral, Metric, ReferralHistory, Practice, UserProfile, CPTCodeMapping, AuditLog
+from .models import Payer, Provider, Patient, Referral, Metric, ReferralHistory, Practice, UserProfile, CPTCodeMapping, AuditLog, Department
 
 @admin.register(Payer)
 class PayerAdmin(admin.ModelAdmin):
@@ -10,6 +10,11 @@ class PayerAdmin(admin.ModelAdmin):
 class PracticeAdmin(admin.ModelAdmin):
     list_display = ('name', 'athena_practice_id', 'location')
     search_fields = ('name', 'athena_practice_id', 'location')
+
+@admin.register(Department)
+class DepartmentAdmin(admin.ModelAdmin):
+    list_display = ('department_id',)
+    search_fields = ('department_id',)
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
@@ -29,8 +34,8 @@ class PatientAdmin(admin.ModelAdmin):
 
 @admin.register(Referral)
 class ReferralAdmin(admin.ModelAdmin):
-    list_display = ('patient', 'provider', 'payer', 'practice', 'status', 'in_network', 'rvu_cost', 'referral_date')
-    list_filter = ('status', 'in_network', 'payer', 'practice')
+    list_display = ('patient', 'provider', 'payer', 'practice', 'status', 'rvu_cost', 'referral_date')
+    list_filter = ('status', 'payer', 'practice')
     search_fields = ('patient__pseudonym', 'provider__full_name', 'payer__name', 'practice__name')
 
 @admin.register(Metric)

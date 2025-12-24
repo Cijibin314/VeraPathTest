@@ -2,10 +2,45 @@ import requests
 from urllib.parse import urlencode
 import os
 import logging
+import json
 from django.core.cache import cache
+import time
+import collections
+from threading import Lock
 
 # Configure basic logging to print to the console
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+class RateLimiter:
+    """
+    A thread-safe rate limiter that enforces a maximum number of calls
+    over a given period using a sliding window algorithm.
+    """
+    def __init__(self, calls, period=1):
+        self.calls = calls
+        self.period = period
+        self.lock = Lock()
+        self.timestamps = collections.deque()
+
+    def acquire(self):
+        with self.lock:
+            now = time.monotonic()
+            
+            # Remove timestamps that are outside the current time window
+            while self.timestamps and self.timestamps[0] <= now - self.period:
+                self.timestamps.popleft()
+
+            # If we have reached the limit, we must wait for the oldest timestamp to expire
+            if len(self.timestamps) >= self.calls:
+                time_to_wait = self.timestamps[0] - (now - self.period)
+                if time_to_wait > 0:
+                    time.sleep(time_to_wait)
+            
+            # Record the time of the current call
+            self.timestamps.append(time.monotonic())
+
+rate_limiter = RateLimiter(calls=14, period=1)
+
 
 # These values are now read from environment variables for security.
 # Populate them in your .env file.
@@ -53,26 +88,46 @@ def get_token():
              logging.error(f"Response Body: {e.response.text}")
          return None
 
-def get(endpoint, practice_id, token, params=None):
+def get(endpoint, practice_id, token, params=None, retry_on_auth_error=True):
     """
-    Perform a GET request against the Athenahealth API.
+    Perform a GET request against the Athenahealth API, with retry logic for expired tokens.
     """
+    rate_limiter.acquire()
     base_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}" 
     url = f"{base_url}/{endpoint.lstrip('/')}"
     headers = {"Authorization": f"Bearer {token}"}
     
-    # Log the full request URL
     full_url = requests.Request('GET', url, params=params or {}).prepare().url
     logging.info(f"Athena API Request: GET {full_url}")
 
-    response = requests.get(full_url, headers=headers) # Use full_url here
-    
-    # Log the response status code
+    response = requests.get(full_url, headers=headers)
     logging.info(f"Athena API Response Status: {response.status_code}")
 
     try:
         response.raise_for_status()
+        return response.json()
     except requests.exceptions.HTTPError as e:
+        if retry_on_auth_error and e.response.status_code == 401:
+            try:
+                error_json = e.response.json()
+                if error_json.get("error") == "Access Token Expired." or "Token Expired" in error_json.get("detailedmessage", ""):
+                    logging.warning("Access token expired. Attempting to refresh and retry request.")
+                    new_token = get_token() # Force a token refresh (it will use cache if valid, or get new)
+                    if new_token:
+                        # Clear cache for the old token to ensure new one is used
+                        cache.delete('athena_api_token') 
+                        logging.info("Retrying request with new access token.")
+                        return get(endpoint, practice_id, new_token, params=params, retry_on_auth_error=False) # Retry once
+                    else:
+                        logging.error("Failed to get a new token for retry.")
+            except json.JSONDecodeError:
+                logging.error(f"Could not decode error response as JSON for 401: {e.response.text}")
+
+        elif e.response.status_code == 429:
+            logging.warning("Rate limit quota exceeded. Waiting 1 second and retrying...")
+            time.sleep(1)
+            return get(endpoint, practice_id, token, params=params, retry_on_auth_error=retry_on_auth_error)
+
         logging.error(f"Athena API Error Response Body: {e.response.text}")
         raise # Re-raise the exception after logging
         

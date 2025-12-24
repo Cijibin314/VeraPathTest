@@ -132,6 +132,29 @@
                 <button type="submit">Run Full Sync</button>
             </form>
         </div>
+
+        <div class="management-section">
+            <h3>Run Individual Sync Commands</h3>
+            <p>Run specific parts of the sync process. Useful for debugging or targeted updates.</p>
+            <form onsubmit="runManagementCommand(event)">
+                {% csrf_token %}
+                <select name="practice_id" required>
+                    <option value="" disabled selected>Select a practice to sync</option>
+                    {% for practice in practices %}
+                        <option value="{{ practice.id }}">{{ practice.name }} ({{ practice.athena_practice_id }})</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="client_id" placeholder="Client ID" required>
+                <input type="text" name="client_secret" placeholder="Client Secret" required>
+                <input type="hidden" name="command" id="command_input" value="">
+                <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                    <button type="submit" onclick="document.getElementById('command_input').value='sync_departments'">Sync Departments</button>
+                    <button type="submit" onclick="document.getElementById('command_input').value='sync_providers'">Sync Providers</button>
+                    <button type="submit" onclick="document.getElementById('command_input').value='sync_patients'">Sync Patients</button>
+                    <button type="submit" onclick="document.getElementById('command_input').value='sync_referrals'">Sync Referrals</button>
+                </div>
+            </form>
+        </div>
                 </div>
                 <div class="management-console">
                     <div class="management-section">

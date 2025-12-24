@@ -2,6 +2,12 @@ import requests
 import difflib
 from urllib.parse import urlencode
 import time
+import hashlib
+import concurrent.futures
+import collections
+import os
+from datetime import datetime
+from threading import Lock
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
@@ -21,6 +27,7 @@ from .models import (
     UserProfile,
     Practice,
     CPTCodeMapping,
+    Department,
 )
 from .forms import ReferralForm
 from analytics.ai_utils import generate_suggestions
@@ -65,8 +72,8 @@ def dashboard(request):
     referrals_with_provider_in_period = referrals_in_period.filter(provider__isnull=False)
     
     total = referrals_in_period.count()
-    in_practice_network = referrals_with_provider_in_period.filter(in_network=True).count()
-    out_practice_network = referrals_with_provider_in_period.filter(in_network=False).count()
+    in_practice_network = referrals_with_provider_in_period.filter(is_in_practice_network=True).count()
+    out_practice_network = referrals_with_provider_in_period.filter(is_in_practice_network=False).count()
     durations_sched = [
         (ref.scheduled_at.date() - ref.referral_date).days
         for ref in referrals_in_period.filter(scheduled_at__isnull=False)
@@ -76,7 +83,7 @@ def dashboard(request):
     in_practice_network_rate = (in_practice_network / total_with_provider * 100.0) if total_with_provider else 0
     out_practice_network_rate = (out_practice_network / total_with_provider * 100.0) if total_with_provider else 0
     
-    out_of_practice_network_referrals_with_provider = referrals_in_period.filter(in_network=False, provider__isnull=False)
+    out_of_practice_network_referrals_with_provider = referrals_in_period.filter(is_in_practice_network=False, provider__isnull=False)
     total_leakage_cost = out_of_practice_network_referrals_with_provider.aggregate(total_cost=Sum('rvu_cost'))['total_cost'] or Decimal('0.00')
     average_leakage_cost = (total_leakage_cost / out_of_practice_network_referrals_with_provider.count()) if out_of_practice_network_referrals_with_provider.count() > 0 else Decimal('0.00')
 
@@ -223,7 +230,7 @@ def get_provider_metrics():
         total = refs.count()
         if total == 0:
             continue
-        in_practice_network_count = refs.filter(in_network=True).count()
+        in_practice_network_count = refs.filter(is_in_practice_network=True).count()
         completed = refs.filter(status__in=[Referral.Status.COMPLETED, Referral.Status.CLOSED]).count()
         metrics[provider.id] = {
             'in_practice_network_rate': in_practice_network_count / total,
@@ -278,7 +285,7 @@ def create_referral(request):
                 provider=provider,
                 payer=payer,
                 specialty=form.cleaned_data.get('specialty') or provider.specialty or '',
-                in_network=is_in_practice_network, # Set automatically from provider's in_practice_network flag
+                is_in_practice_network=provider.is_in_practice_network, # Set automatically from provider's flag
                 is_urgent=form.cleaned_data.get('is_urgent', False),
                 suggested_provider_ids=""
             )
@@ -459,12 +466,12 @@ def metric_detail(request, metric):
         if metric == 'in_network_rate':
             title = "In-Practice-Network Rate"
             total = month_refs.count()
-            in_net = month_refs.filter(in_network=True).count()
+            in_net = month_refs.filter(is_in_practice_network=True).count()
             value = (Decimal(in_net) / Decimal(total) * 100) if total else Decimal('0')
         elif metric == 'out_of_network_rate':
             title = "Out-of-Practice-Network Rate"
             total = month_refs.count()
-            out_net = month_refs.filter(in_network=False).count()
+            out_net = month_refs.filter(is_in_practice_network=False).count()
             value = (Decimal(out_net) / Decimal(total) * 100) if total else Decimal('0')
         elif metric == 'completion_rate':
             title = "Completion Rate"
@@ -473,19 +480,19 @@ def metric_detail(request, metric):
             value = (Decimal(completed) / Decimal(total) * 100) if total else Decimal('0')
         elif metric in ['leakage_cost', 'total_leakage_cost']:
             title = "Total Leakage Cost"
-            value = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or Decimal('0')
+            value = month_refs.filter(is_in_practice_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or Decimal('0')
         elif metric == 'retained_revenue':
             title = "Retained Revenue"
-            avg_in_cost = month_refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or Decimal('0')
-            in_net_count = month_refs.filter(in_network=True).count()
+            avg_in_cost = month_refs.filter(is_in_practice_network=True).aggregate(avg=Avg('rvu_cost'))['avg'] or Decimal('0')
+            in_net_count = month_refs.filter(is_in_practice_network=True).count()
             value = avg_in_cost * in_net_count
         elif metric == 'referral_volume':
             title = "Referral Volume"
             value = Decimal(month_refs.count())
         elif metric in ['avg_leakage_cost', 'average_leakage_cost']:
             title = "Average Leakage Cost"
-            out_count = month_refs.filter(in_network=False).count()
-            total_leak = month_refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or Decimal('0')
+            out_count = month_refs.filter(is_in_practice_network=False).count()
+            total_leak = month_refs.filter(is_in_practice_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or Decimal('0')
             value = (total_leak / out_count) if out_count else Decimal('0')
         else:
             title = "Unknown Metric"
@@ -558,13 +565,13 @@ def specialty_dashboard(request):
         refs = base_referrals.filter(provider__specialty=spec)
         total = refs.count()
 
-        in_practice_network = refs.filter(in_network=True).count()
-        out_practice_network = refs.filter(in_network=False).count()
+        in_practice_network = refs.filter(is_in_practice_network=True).count()
+        out_practice_network = refs.filter(is_in_practice_network=False).count()
         
-        leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
+        leakage_cost = refs.filter(is_in_practice_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
         avg_leakage_cost = (leakage_cost / out_practice_network) if out_practice_network else 0
         
-        avg_in_cost_agg = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))
+        avg_in_cost_agg = refs.filter(is_in_practice_network=True).aggregate(avg=Avg('rvu_cost'))
         avg_in_cost = avg_in_cost_agg['avg'] or 0
 
         retained_revenue = in_practice_network * avg_in_cost
@@ -610,12 +617,12 @@ def specialty_detail(request, specialty):
         in_practice_network = 0
         out_practice_network = 0
     else:
-        in_practice_network = refs.filter(in_network=True).count()
-        out_practice_network = refs.filter(in_network=False).count()
-    leakage_cost = refs.filter(in_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
+        in_practice_network = refs.filter(is_in_practice_network=True).count()
+        out_practice_network = refs.filter(is_in_practice_network=False).count()
+    leakage_cost = refs.filter(is_in_practice_network=False).aggregate(total_leak=Sum('rvu_cost')).get('total_leak') or 0
     avg_leakage_cost = (leakage_cost / out_practice_network) if out_practice_network else 0
     
-    avg_in_cost_agg = refs.filter(in_network=True).aggregate(avg=Avg('rvu_cost'))
+    avg_in_cost_agg = refs.filter(is_in_practice_network=True).aggregate(avg=Avg('rvu_cost'))
     avg_in_cost = avg_in_cost_agg['avg'] or 0
 
     retained_revenue = in_practice_network * avg_in_cost
@@ -824,8 +831,8 @@ def get_appointment_reasons_ajax(request):
     cache_key = f'athena_reasons_{practice_id}_{provider_id}_{department_id}'
     cached_reasons = cache.get(cache_key)
 
-    if cached_results:
-        return JsonResponse(cached_results, safe=False)
+    if cached_reasons:
+        return JsonResponse(cached_reasons, safe=False)
 
     try:
         token = get_token()
@@ -1095,7 +1102,7 @@ def create_referral_order_ajax(request):
                 provider=provider,
                 payer=payer,
                 specialty=specialty or provider.specialty or '',
-                in_network=provider.is_in_practice_network,
+                is_in_practice_network=provider.is_in_practice_network,
                 is_urgent=data.get('is_urgent', False),
                 status=status,
                 referral_date=datetime.now().date(),
@@ -1303,13 +1310,6 @@ from django.http import StreamingHttpResponse
 
 # Helper functions for Athena sync
 
-
-
-
-
-
-
-
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def management(request):
@@ -1451,14 +1451,83 @@ def stream_command_view(request):
     client_secret = request.GET.get('client_secret')
 
     def event_stream():
+        # Common setup for all sync commands
+        def sync_setup(practice_id, client_id, client_secret):
+            try:
+                practice = Practice.objects.get(id=practice_id)
+                athena_practice_id = practice.athena_practice_id
+            except Practice.DoesNotExist:
+                yield f"event: error\ndata: Practice with ID {practice_id} not found.\n\n"
+                return None, None, None, None
+            
+            token = get_token()
+            if not token:
+                yield f"event: error\ndata: Failed to obtain Athena API token.\n\n"
+                return None, None, None, None
+            
+            headers = {"Authorization": f"Bearer {token}"}
+            return practice, athena_practice_id, token, headers
+
         if command_name == 'run_full_sync':
-            yield f"event: message\ndata: Starting full Athena sync for practice ID {practice_id}...\n\n"
-            for message in run_full_athena_sync(practice_id, client_id, client_secret):
-                yield f"event: message\ndata: {message}\n\n"
+            log_dir = "/home/user/.gemini/tmp/8f5f700a5a9f69e45277c43d3d10c30291760b8bf9e6feaa90db45dfd7fe33da"
+            log_filename = datetime.now().strftime("sync_log_%Y%m%d_%H%M%S.txt")
+            log_filepath = os.path.join(log_dir, log_filename)
+            
+            try:
+                with open(log_filepath, 'w') as f:
+                    f.write(f"--- Starting Athena sync for practice ID {practice_id} ---\n")
+                    yield f"event: message\ndata: Logs will also be saved to: {log_filepath}\n\n"
+                    yield f"event: message\ndata: Starting full Athena sync for practice ID {practice_id}...\n\n"
+                    f.write(f"Starting full Athena sync for practice ID {practice_id}...\n")
+
+                    for message in run_full_athena_sync(practice_id, client_id, client_secret, debug_file=f):
+                        f.write(message + '\n')
+                        yield f"event: message\ndata: {message}\n\n"
+                    
+                    f.write(f"--- Sync process finished ---\n")
+                    yield "event: close\ndata: Sync process finished.\n\n"
+            except Exception as file_error:
+                yield f"event: error\ndata: Error writing log file: {file_error}\n\n"
+                yield f"event: message\ndata: Starting full Athena sync for practice ID {practice_id} (without log file)...\n\n"
+                for message in run_full_athena_sync(practice_id, client_id, client_secret):
+                    yield f"event: message\ndata: {message}\n\n"
+                yield "event: close\ndata: Sync process finished.\n\n"
+
+        elif command_name in ['sync_departments', 'sync_providers', 'sync_patients', 'sync_referrals']:
+            practice, athena_practice_id, token, headers = yield from sync_setup(practice_id, client_id, client_secret)
+            if not practice:
+                return
+
+            if command_name == 'sync_departments':
+                yield f"event: message\ndata: Starting department sync for practice ID {practice_id}...\n\n"
+                for message in _sync_departments(athena_practice_id, headers, None):
+                    yield f"event: message\ndata: {message}\n\n"
+            
+            elif command_name == 'sync_providers':
+                yield f"event: message\ndata: Starting provider sync for practice ID {practice_id}...\n\n"
+                for message in _sync_providers(athena_practice_id, headers, practice, None):
+                    yield f"event: message\ndata: {message}\n\n"
+
+            elif command_name == 'sync_patients':
+                yield f"event: message\ndata: Starting patient sync for practice ID {practice_id}...\n\n"
+                department_ids = list(Department.objects.values_list('department_id', flat=True))
+                if not department_ids:
+                    yield f"event: error\ndata: No departments found in the database. Please run 'Sync Departments' first.\n\n"
+                    yield "event: close\ndata: Sync process finished.\n\n"
+                    return
+                for message in _sync_patients(athena_practice_id, token, department_ids, None):
+                    yield f"event: message\ndata: {message}\n\n"
+            
+            elif command_name == 'sync_referrals':
+                yield f"event: message\ndata: Starting referral sync for practice ID {practice_id}...\n\n"
+                for message in _sync_referrals(athena_practice_id, token, practice, None):
+                    yield f"event: message\ndata: {message}\n\n"
+
+            yield "event: close\ndata: Sync process finished.\n\n"
+
         else:
-            yield f"event: error\ndata: Unknown or obsolete command: {command_name}. Please use 'run_full_sync'.\n\n"
-        
-        yield "event: close\ndata: Sync process finished.\n\n"
+            yield f"event: error\ndata: Unknown or obsolete command: {command_name}.\n\n"
+            yield "event: close\ndata: Sync process finished.\n\n"
 
     return StreamingHttpResponse(event_stream(), content_type='text/event-stream')
 # --- Delete referral ---
@@ -1593,27 +1662,459 @@ def referral_detail(request, pk):
 
     return JsonResponse(data, safe=False)
 
-
-def _get_athena_token(client_id, client_secret):
-    """Helper to get athena token, abstracting the request."""
-    token_url = "https://api.preview.platform.athenahealth.com/oauth2/v1/token"
+def _sync_departments(athena_practice_id, headers, debug_file):
+    """Fetches all departments for a practice and stores them in the database."""
+    department_ids = []
+    yield "\nFetching all departments for practice..."
+    if debug_file:
+        debug_file.write("\nFetching all departments for practice...\n")
     try:
-        token_resp = requests.post(
-            token_url,
-            data={
-                "grant_type": "client_credentials",
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "scope": "athena/service/Athenanet.MDP.*",
-            },
-        )
-        token_resp.raise_for_status()
-        return token_resp.json()["access_token"]
-    except requests.RequestException as e:
-        logging.error(f"Failed to obtain OAuth token: {e}")
-        return None
+        departments_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/departments?limit=1000"
+        response = requests.get(departments_url, headers=headers)
+        response.raise_for_status()
+        departments_data = response.json().get("departments", [])
+        
+        # Clear existing departments to ensure a fresh sync
+        Department.objects.all().delete()
+        
+        for d in departments_data:
+            if "departmentid" in d:
+                dep_id = str(d['departmentid'])
+                Department.objects.get_or_create(department_id=dep_id)
+                department_ids.append(dep_id)
 
-def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
+        msg = f"  Synced {len(department_ids)} departments."
+        yield msg
+        if debug_file:
+            debug_file.write(msg + "\n")
+    except requests.RequestException as e:
+        msg = f"ERROR: Could not fetch departments: {e}. Aborting."
+        yield msg
+        if debug_file:
+            debug_file.write(msg + "\n")
+        raise
+    return department_ids
+
+def _sync_providers(athena_practice_id, headers, practice, debug_file):
+    """Fetches and syncs providers for a given practice."""
+    yield "\nStep 2: Syncing Providers..."
+    if debug_file:
+        debug_file.write("\nStep 2: Syncing Providers...\n")
+    try:
+        provider_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/providers?limit=1000"
+        response = requests.get(provider_url, headers=headers)
+        response.raise_for_status()
+        providers_data = response.json().get("providers", [])
+
+        created_count = 0
+        updated_count = 0
+        for provider_data in providers_data:
+            provider_id = str(provider_data.get("providerid"))
+            npi = provider_data.get("npi")
+
+            if not provider_id:
+                continue
+
+            defaults = {
+                'full_name': provider_data.get("displayname", ""),
+                'specialty': provider_data.get("specialty", ""),
+                'providerid': provider_id,
+            }
+            
+            provider = None
+            created = False
+
+            if npi:
+                # NPI is the source of truth for uniqueness.
+                provider, created = Provider.objects.update_or_create(
+                    npi=npi,
+                    defaults=defaults
+                )
+            else:
+                # No NPI. This provider can't be uniquely identified globally.
+                # Try to find a provider with this providerid already linked to this practice.
+                existing_providers = Provider.objects.filter(providerid=provider_id, practices=practice)
+                if existing_providers.exists():
+                    provider = existing_providers.first()
+                    provider.full_name = defaults['full_name']
+                    provider.specialty = defaults['specialty']
+                    provider.save()
+                    created = False
+                    if existing_providers.count() > 1:
+                        msg = f"WARNING: Found multiple providers with providerid {provider_id} for practice {practice.name}. Using the first one."
+                        yield msg
+                        if debug_file:
+                            debug_file.write(msg + "\n")
+                else:
+                    # To be safe and avoid incorrect linking, we create a new provider record.
+                    # This may lead to duplicates if the same no-NPI provider works at multiple synced practices.
+                    provider = Provider.objects.create(**defaults)
+                    created = True
+
+            if provider:
+                provider.practices.add(practice)
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+        msg = f"Synced providers. {created_count} new providers created, {updated_count} updated."
+        yield msg
+        if debug_file:
+            debug_file.write(msg + "\n")
+    except requests.RequestException as e:
+        msg = f"ERROR during Provider Sync: {e}. Aborting."
+        yield msg
+        if debug_file:
+            debug_file.write(msg + "\n")
+        raise # Re-raise the exception so the caller can handle it
+def _sync_patients(athena_practice_id, token, department_ids, debug_file):
+    from .models import ImportLog, Patient
+    task_name = "run_sync_patients"
+    try:
+        current_run_time = timezone.now()
+        def _fetch_patients_for_department(dept_id, debug_file, token):
+            """
+            Fetches a list of patients for a given department. If the department is too large,
+            it recursively breaks the query down using a series of partitioning fields.
+            Returns a tuple: (list_of_patients, list_of_messages)
+            """
+            messages = []
+            
+            # Define the fields and their possible values for partitioning large queries
+            partition_fields = [
+                ('sex', ['M', 'F']),
+                ('status', ['a', 'i', 'p', 'd']),
+                ('maritalstatus', ['D', 'M', 'S', 'U', 'W', 'X', 'P']),
+                ('veteran', ['Y', 'N', 'P']),
+                ('agriculturalworker', ['Y', 'N', 'P']),
+                ('schoolbasedhealthcenter', ['Y', 'N', 'P']),
+                ('publichousing', ['Y', 'N', 'P']),
+                ('contactrelationship', ['SPOUSE', 'PARENT', 'CHILD', 'SIBLING', 'FRIEND', 'COUSIN', 'GUARDIAN', 'OTHER']),
+                ('nextkinrelationship', ['SPOUSE', 'PARENT', 'CHILD', 'SIBLING', 'FRIEND', 'COUSIN', 'GUARDIAN', 'OTHER']),
+                ('contactpreference', ['HOMEPHONE', 'MAIL', 'MOBILEPHONE', 'PORTAL', 'WORKPHONE']),
+                ('consenttotext', [True, False]),
+                ('omitbalances', [True, False]),
+                ('omitphotoinformation', [True, False]),
+                ('omitdefaultpharmacy', [True, False]),
+                ('consenttocall', [True, False]),
+                ('homeboundyn', [True, False]),
+                ('povertylevelincomerangedeclined', [True, False]),
+                ('show2015edcehrtvalues', [True, False]),
+            ]
+
+            def _get_paginated_patients(params):
+                """Helper to get all pages for a given query."""
+                # This function remains the same, it just fetches all pages for a given set of params
+                patients = []
+                offset = 0
+                limit = 1000
+                while True:
+                    paginated_params = params.copy()
+                    paginated_params['limit'] = limit
+                    paginated_params['offset'] = offset
+                    
+                    if debug_file:
+                        debug_file.write(f"  Fetching patients with params: {paginated_params}\n")
+                    
+                    response = get("patients", athena_practice_id, token, params=paginated_params)
+                    current_page = response.get("patients", [])
+                    patients.extend(current_page)
+                    
+                    if len(current_page) < limit:
+                        break
+                    offset += limit
+                return patients
+            
+            def get_recursively(base_params, field_index):
+                """Recursively partition the search until the API call succeeds."""
+                # Base case: If we've exhausted our partitioning fields, we cannot proceed.
+                if field_index >= len(partition_fields):
+                    err_msg = f"    ERROR: Cannot break down query further for params {base_params}. Some patients may be missed."
+                    messages.append(err_msg)
+                    if debug_file:
+                        debug_file.write(err_msg + "\n")
+                    return []
+                field_name, values = partition_fields[field_index]
+                partition_patients = []
+                for value in values:
+                    new_params = base_params.copy()
+                    new_params[field_name] = value
+                    
+                    try:
+                        # Try to fetch with the new, more refined query
+                        patients = _get_paginated_patients(new_params)
+                        partition_patients.extend(patients)
+                        
+                        msg = f"    Successfully fetched {len(patients)} patients for sub-query: {new_params}"
+                        messages.append(msg)
+                        if debug_file:
+                            debug_file.write(msg + "\n")
+
+                    except requests.exceptions.HTTPError as e:
+                        # Check if this smaller chunk is *still* too large
+                        is_too_large_error = False
+                        try:
+                            if "The given search parameters would produce a total data set larger than 1000 records" in e.response.text:
+                                is_too_large_error = True
+                        except (ValueError, AttributeError):
+                            pass
+                        
+                        if is_too_large_error:
+                            # If it's still too large, recurse to the next field
+                            msg = f"    Chunk {new_params} is still too large. Recursing to next field..."
+                            messages.append(msg)
+                            if debug_file:
+                                debug_file.write(msg + "\n")
+                            partition_patients.extend(get_recursively(new_params, field_index + 1))
+                        else:
+                            # A different, unexpected HTTP error occurred
+                            err_msg = f"    ERROR: HTTP error for sub-query {new_params}: {e}"
+                            messages.append(err_msg)
+                            if debug_file:
+                                debug_file.write(err_msg + "\n")
+                return partition_patients
+
+            # --- Main logic for _fetch_patients_for_department ---
+            try:
+                # First, try a direct fetch. This will work for small departments.
+                initial_params = {'departmentid': dept_id}
+                all_patients = _get_paginated_patients(initial_params)
+                return (all_patients, messages)
+                
+            except requests.exceptions.HTTPError as e:
+                is_too_large_error = False
+                try:
+                    if "The given search parameters would produce a total data set larger than 1000 records" in e.response.text:
+                        is_too_large_error = True
+                except (ValueError, AttributeError):
+                    pass
+
+                if is_too_large_error:
+                    msg = f"  Department {dept_id} is too large. Starting recursive breakdown..."
+                    messages.append(msg)
+                    if debug_file:
+                        debug_file.write(msg + "\n")
+                    
+                    # Start the recursive breakdown process
+                    all_patients = get_recursively({'departmentid': dept_id}, 0)
+                    return (all_patients, messages)
+                else:
+                    # Re-raise any other, unexpected HTTP error
+                    raise e
+            except Exception as e:
+                # Handle other unexpected errors
+                raise e
+
+        patients_created_count = 0
+        patients_updated_count = 0
+        synced_patient_ids = set()
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            future_to_department = {
+                executor.submit(_fetch_patients_for_department, dept_id, debug_file, token): dept_id
+                for dept_id in department_ids
+            }
+
+            for future in concurrent.futures.as_completed(future_to_department):
+                dept_id = future_to_department[future]
+                
+                try:
+                    patients_in_dept, messages = future.result()
+                    for msg in messages:
+                        yield msg
+                    
+                    log_msg = f"  Finished fetching for department {dept_id}. Found {len(patients_in_dept)} patients."
+                    logging.info(log_msg)
+                    if debug_file:
+                        debug_file.write(log_msg + "\n")
+
+                except Exception as e:
+                    yield f"  ERROR: A worker task for patients (dept:{dept_id}) failed: {e}"
+                    continue
+
+                if not patients_in_dept:
+                    # This is normal for departments with no patients, no need to log verbosely
+                    continue
+                
+                for patient_data in patients_in_dept:
+                    athena_patient_id = str(patient_data.get("patientid"))
+                    if not athena_patient_id or athena_patient_id in synced_patient_ids:
+                        continue
+                    
+                    synced_patient_ids.add(athena_patient_id)
+                    pseudonym_for_lookup = hashlib.sha256(athena_patient_id.encode()).hexdigest()
+
+                    _, created = Patient.objects.update_or_create(
+                        pseudonym=pseudonym_for_lookup,
+                        defaults={
+                            "original_id": athena_patient_id,
+                        }
+                    )
+                    if created:
+                        patients_created_count += 1
+                    else:
+                        patients_updated_count += 1
+                
+                total_synced = len(synced_patient_ids)
+                if total_synced > 0 and total_synced % 1000 == 0: 
+                    yield f"  Total unique patients synced so far: {total_synced} (New: {patients_created_count}, Updated: {patients_updated_count})"
+        
+        yield f"Synced patients. {patients_created_count} new patients created, {patients_updated_count} updated across {len(department_ids)} departments."
+    except Exception as e:
+        logging.error(f"Athena API Error (Patient Sync): {e}", exc_info=True)
+        yield f"ERROR during Patient Sync: {e}. Check logs for details. Aborting."
+        ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during patient sync: {e}"})
+        return
+def _sync_referrals(athena_practice_id, token, practice, debug_file):
+    from .models import ImportLog, Patient, Provider, Referral, Department
+    task_name = "run_sync_referrals"
+    try:
+        current_run_time = timezone.now()
+        all_patients = Patient.objects.all()
+        all_department_ids = list(Department.objects.values_list('department_id', flat=True))
+        
+        num_patients = all_patients.count()
+        num_departments = len(all_department_ids)
+        total_api_calls_estimate = num_patients * num_departments
+
+        # --- Time Estimation ---
+        if total_api_calls_estimate > 0:
+            estimated_total_seconds = total_api_calls_estimate / 14 
+            hours = int(estimated_total_seconds // 3600)
+            minutes = int((estimated_total_seconds % 3600) // 60)
+            yield f"  ESTIMATE: Submitting approximately {total_api_calls_estimate} API calls to the thread pool."
+            yield f"  Estimated time with rate limiting: about {hours} hours and {minutes} minutes."
+            yield "  This is a rough estimate and the actual time may vary."
+        # --- End Time Estimation ---
+
+        referrals_created_count = 0
+        referrals_updated_count = 0
+        skipped_count = 0
+        processed_api_calls = 0
+        
+        practice_provider_ids = set(map(str, practice.provider_set.values_list('providerid', flat=True)))
+
+        def _fetch_referrals_for_patient(patient, department_id, debug_file, token):
+            """Worker to fetch orders for a patient for a specific department, respecting rate limits."""
+            if debug_file:
+                debug_file.write(f"Referral worker processing patient '{patient.original_id}' for department '{department_id}'\n")
+            try:
+                if(department_id == -1):
+                    return (None, patient, None)
+                params = {"limit": 250, "departmentid": department_id}
+                orders_data = get(f"patients/{patient.original_id}/documents/order", athena_practice_id, token, params=params)
+                return (orders_data, patient, None)
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429:
+                    logging.error(f"Rate limit exceeded for patient {patient.original_id}, dept {department_id}. Adjust rate limiter. Error: {e}")
+                    return (None, patient, f"Rate Limit Error for Patient {patient.original_id}, Dept {department_id}: {e}")
+                elif e.response.status_code == 400 and "The specified patient does not exist in that department." in e.response.text:
+                    # This is an expected error if a patient is not associated with a specific department
+                    logging.info(f"Patient {patient.original_id} does not exist in department {department_id} (expected).")
+                    return (None, patient, None)
+                else:
+                    logging.error(f"Failed to sync referrals for patient {patient.original_id}, dept {department_id}: {e}")
+                    return (None, patient, f"API Error for Patient {patient.original_id}, Dept {department_id}: {e}")
+            except Exception as e:
+                logging.error(f"An unexpected error occurred for patient {patient.original_id}, dept {department_id}: {e}")
+                return (None, patient, f"Unexpected Error for Patient {patient.original_id}, Dept {department_id}: {e}")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=14) as executor:
+            future_to_patient = {
+                executor.submit(_fetch_referrals_for_patient, patient, dept_id, debug_file, token): patient
+                for patient in all_patients
+                for dept_id in all_department_ids
+            }
+            total_api_calls = len(future_to_patient)
+
+            for future in concurrent.futures.as_completed(future_to_patient):
+                processed_api_calls += 1
+                if processed_api_calls % 100 == 0:
+                    yield f"  Processed {processed_api_calls} of {total_api_calls} referral API calls..."
+
+                patient = future_to_patient[future]
+                result = future.result()
+                if not isinstance(result, tuple) or len(result) != 3:
+                    yield f"  --> UNEXPECTED WORKER RESULT for patient {patient.original_id}: Type={type(result)}, Value={result}"
+                    continue
+                
+                orders_data, _, error = result
+
+                if error:
+                    yield f"  ERROR for patient {patient.original_id}: {error}"
+                    continue
+                if not orders_data or not orders_data.get("orders"):
+                    continue
+
+                for order in orders_data["orders"]:
+                    # ... (rest of the processing logic remains the same)
+                    if not (order.get('ordertype') == 'CONSULT' and 'referral' in order.get('documentdescription', '').lower()):
+                        skipped_count += 1
+                        continue
+
+                    provider_id_from_order = order.get('providerid')
+                    provider = None
+
+                    if provider_id_from_order and str(provider_id_from_order) in practice_provider_ids:
+                        try:
+                            provider = Provider.objects.filter(providerid=str(provider_id_from_order), practices=practice).first()
+                            if not provider:
+                                skipped_count += 1
+                                continue
+                        except Provider.DoesNotExist:
+                            skipped_count += 1
+                            continue
+                    else:
+                        skipped_count += 1
+                        continue
+                    
+                    referral_date_str = order.get('createddate')
+                    referral_date = datetime.strptime(referral_date_str, '%m/%d/%Y').date() if referral_date_str else timezone.now().date()
+                    
+                    documenttypeid = order.get('documenttypeid')
+                    rvu_calculated_cost = Decimal("0.00")
+                    if documenttypeid:
+                        try:
+                            cpt_mapping = CPTCodeMapping.objects.get(ordertypeid=documenttypeid)
+                            if practice.work_gpci and practice.pe_gpci and practice.mp_gpci and practice.conversion_factor:
+                                total_rvu = (cpt_mapping.work_rvu * practice.work_gpci) + \
+                                            (cpt_mapping.non_fac_pe_rvu * practice.pe_gpci) + \
+                                            (cpt_mapping.mp_rvu * practice.mp_gpci)
+                                rvu_calculated_cost = total_rvu * practice.conversion_factor
+                        except CPTCodeMapping.DoesNotExist:
+                            pass
+                        except Exception as e:
+                            logging.error(f"Error calculating RVU for order {order.get('orderid')}: {e}")
+
+                    defaults = {
+                        'patient': patient,
+                        'is_in_practice_network': provider.is_in_practice_network if provider else False,
+                        'rvu_cost': rvu_calculated_cost,
+                        'practice': practice,
+                    }
+                    if provider: defaults['provider'] = provider
+                    if referral_date: defaults['referral_date'] = referral_date
+                    if provider and provider.specialty: defaults['specialty'] = provider.specialty
+                    if order.get("status"): defaults['status'] = order.get("status").lower()
+                    if order.get('encounterid'): defaults['athena_encounter_id'] = order.get('encounterid')
+                    if documenttypeid: defaults['documenttypeid'] = documenttypeid
+
+                    _, created = Referral.objects.update_or_create(
+                        athena_document_id=order.get('orderid'),
+                        defaults=defaults
+                    )
+                    if created:
+                        referrals_created_count += 1
+                    else:
+                        referrals_updated_count += 1
+
+        yield f"Synced referrals. Created: {referrals_created_count}, Updated: {referrals_updated_count}, Skipped: {skipped_count}."
+    except Exception as e:
+        logging.error(f"An unexpected error occurred during referral sync: {e}", exc_info=True)
+        yield f"ERROR during Referral Sync: {e}. Aborting."
+        ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during referral sync: {e}"})
+        return
+def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg, debug_file=None):
     """
     A comprehensive, unified sync function for a given practice.
     This function establishes a baseline of referral orders and then updates their
@@ -1633,7 +2134,7 @@ def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
         yield f"ERROR: Practice with local ID {practice_id_arg} not found. Aborting."
         return
 
-    token = _get_athena_token(client_id_arg, client_secret_arg)
+    token = get_token()
     if not token:
         yield "ERROR: Failed to obtain Athena API token. Aborting sync."
         ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes":"Failed to obtain token."})
@@ -1641,314 +2142,39 @@ def run_full_athena_sync(practice_id_arg, client_id_arg, client_secret_arg):
     yield "Token obtained successfully."
     headers = {"Authorization": f"Bearer {token}"}
 
-    # --- Step 2: Sync Providers ---
-    yield "\nStep 2: Syncing Providers..."
+    # --- Fetch Departments ---
     try:
-        provider_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/providers?limit=1000"
-        response = requests.get(provider_url, headers=headers)
-        response.raise_for_status()
-        providers_data = response.json().get("providers", [])
-
-        created_count = 0
-        updated_count = 0
-        for provider_data in providers_data:
-            provider_id = str(provider_data.get("providerid"))
-            if not provider_id: continue
-
-            defaults = {}
-            if provider_data.get("displayname"):
-                defaults['full_name'] = provider_data.get("displayname")
-            if provider_data.get("npi"):
-                defaults['npi'] = provider_data.get("npi")
-            if provider_data.get("specialty"):
-                defaults['specialty'] = provider_data.get("specialty")
-            
-            if not defaults:
-                continue
-
-            provider, created = Provider.objects.update_or_create(
-                providerid=provider_id,
-                defaults=defaults
-            )
-            provider.practices.add(practice)
-            if created:
-                created_count += 1
-            else:
-                updated_count += 1
-        yield f"Synced providers. {created_count} new providers created, {updated_count} updated."
-    except requests.RequestException as e:
-        yield f"ERROR during Provider Sync: {e}. Aborting."
-        ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during provider sync: {e}"})
+        yield from _sync_departments(athena_practice_id, token, headers, debug_file)
+    except Exception as e:
+        # Handle the exception re-raised by _sync_departments
+        ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed to fetch departments: {e}"})
         return
 
-    # --- Step 3: Sync Patients ---
-    # yield "\nStep 3: Syncing Patients..."
-    # try:
-    #     # First, get all departments for the practice
-    #     yield "  Fetching all departments..."
-    #     departments_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/departments?limit=1000"
-    #     response = requests.get(departments_url, headers=headers)
-    #     response.raise_for_status()
-    #     departments_data = response.json().get("departments", [])
-    #     department_ids = [d['departmentid'] for d in departments_data if 'departmentid' in d]
-    #     yield f"  Found {len(department_ids)} departments."
-
-    #     patients_created_count = 0
-    #     patients_updated_count = 0
-    #     synced_patient_ids = set()
-    #     alphabet = "abcdefghijklmnopqrstuvwxyz"
-
-    #     # Then, iterate over each department and each letter of the alphabet for the first name
-    #     for dept_id in department_ids:
-    #         for letter in alphabet:
-    #             yield f"  Fetching patients for department {dept_id} with first name starting with '{letter}'..."
-    #             logging.info(f"Fetching patients for department {dept_id} with first name starting with '{letter}'...")
-                
-    #             offset = 0
-    #             limit = 1000
-                
-    #             while True:
-    #                 patient_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/patients"
-    #                 params = {
-    #                     'departmentid': dept_id,
-    #                     'firstname': letter,
-    #                     'limit': limit,
-    #                     'offset': offset
-    #                 }
-                    
-    #                 logging.info(f"Attempting to fetch patients from {patient_url} with params: {params}")
-
-    #                 try:
-    #                     response = requests.get(patient_url, headers=headers, params=params)
-    #                     response.raise_for_status()
-                        
-    #                     patients_data = response.json()
-    #                     patient_list = patients_data.get("patients", [])
-                        
-    #                     if not patient_list:
-    #                         break
-
-    #                     for patient_data in patient_list:
-    #                         athena_patient_id = str(patient_data.get("patientid"))
-    #                         if not athena_patient_id or athena_patient_id in synced_patient_ids:
-    #                             continue
-                            
-    #                         synced_patient_ids.add(athena_patient_id)
-
-    #                         patient, created = Patient.objects.update_or_create(
-    #                             original_id=athena_patient_id,
-    #                             defaults={
-    #                                 "first_name": patient_data.get("firstname"),
-    #                                 "last_name": patient_data.get("lastname"),
-    #                             }
-    #                         )
-    #                         if created:
-    #                             patients_created_count += 1
-    #                         else:
-    #                             patients_updated_count += 1
-                        
-    #                     total_synced = len(synced_patient_ids)
-    #                     yield f"  Total unique patients synced so far: {total_synced} (New: {patients_created_count}, Updated: {patients_updated_count})"
-
-    #                     if 'next' in patients_data:
-    #                         offset += limit
-    #                     else:
-    #                         break
-                    
-    #                 except requests.exceptions.HTTPError as e:
-    #                     # If a 400-level error occurs for a specific letter, it might be that there are no patients starting with that letter.
-    #                     # We should log it and continue.
-    #                     logging.warning(f"Could not fetch patients for department {dept_id} and letter '{letter}'. Status code: {e.response.status_code}. Response: {e.response.text}")
-    #                     yield f"  No patients found for department {dept_id} with first name starting with '{letter}'. Continuing..."
-    #                     break # Break the while loop for this letter and move to the next
-                
-    #     yield f"Synced patients. {patients_created_count} new patients created, {patients_updated_count} updated across {len(department_ids)} departments."
-    # except requests.RequestException as e:
-    #     logging.error(f"Athena API Error (Patient Sync): {e}")
-    #     if 'response' in locals() and response:
-    #         logging.error(f"Response body: {response.text}")
-    #     yield f"ERROR during Patient Sync: {e}. Check logs for details. Aborting."
-    #     ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during patient sync: {e}"})
-    #     return
-
-            # --- Step 4: Sync Referrals ---
-    yield "\nStep 4: Syncing Referrals..."
+    # --- Sync Providers ---
     try:
-        from django.core.paginator import Paginator
-        from datetime import datetime
-
-        # First, get all departments for the practice
-        yield "  Fetching all departments for referral sync..."
-        departments_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/departments?limit=1000"
-        response = requests.get(departments_url, headers=headers)
-        response.raise_for_status()
-        departments_data = response.json().get("departments", [])
-        department_ids = [d['departmentid'] for d in departments_data if 'departmentid' in d]
-        num_departments = len(department_ids)
-        yield f"  Found {num_departments} departments."
-
-        num_patients = Patient.objects.count()
-        
-        # --- Time Estimation ---
-        if num_patients > 0 and num_departments > 0:
-            time_per_call_seconds = 0.75 # Conservative estimate
-            total_api_calls = num_patients * num_departments
-            estimated_total_seconds = total_api_calls * time_per_call_seconds
-            
-            hours = int(estimated_total_seconds // 3600)
-            minutes = int((estimated_total_seconds % 3600) // 60)
-            
-            yield "\n" # Yield the newline separately
-            yield f"  ESTIMATE: Based on {num_patients} patients and {num_departments} departments, the referral sync will make approximately {total_api_calls} API calls."
-            yield f"  Estimated time: about {hours} hours and {minutes} minutes."
-            yield "  This is a rough estimate and the actual time may vary."
-        # --- End Time Estimation ---
-
-        all_patients = Patient.objects.all().order_by('id')
-        paginator = Paginator(all_patients, 25) # Process 25 patients at a time
-
-        referrals_created_count = 0
-        referrals_updated_count = 0
-        skipped_count = 0
-        
-        practice_provider_ids = set(practice.provider_set.values_list('providerid', flat=True))
-
-        for page_num in paginator.page_range:
-            yield f"  Processing patient page {page_num} of {paginator.num_pages} for referrals..."
-            for patient in paginator.page(page_num).object_list:
-                if not patient.original_id:
-                    continue
-                # if not patient.original_id.strip() == '60178':
-                #     continue
-                yield(f"Processing patient {patient.original_id}...")
-                for dept_id in department_ids:
-                    try:
-                        # Use the correct endpoint for patient orders with departmentid
-                        params = {"departmentid": dept_id, "limit": 100}
-                        orders_data = get(f"patients/{patient.original_id}/documents/order", athena_practice_id, token, params=params)
-
-                        logging.info(f"Raw response for patient {patient.original_id}, department {dept_id}: {orders_data}")
-
-                        if not orders_data or not orders_data.get("orders"):
-                            continue
-
-                        for order in orders_data["orders"]:
-                            # Filter for referral orders based on ordertype and description
-                            if not (order.get('ordertype') == 'CONSULT' and 'referral' in order.get('documentdescription', '').lower()):
-                                logging.info(f"Skipping order {order.get('orderid')} for patient {patient.original_id}: Not a referral order.")
-                                skipped_count += 1
-                                continue
-
-                            provider_id_from_order = order.get('providerid')
-                            provider = None # Default to None
-
-                            if provider_id_from_order:
-                                referring_provider_id = provider_id_from_order # Keep as integer
-                                if referring_provider_id not in practice_provider_ids:
-                                    logging.info(f"Skipping order {order.get('orderid')} for patient {patient.original_id}: Provider {referring_provider_id} not in practice.")
-                                    skipped_count += 1
-                                    continue
-                                
-                                try:
-                                    provider = Provider.objects.get(providerid=referring_provider_id, practices=practice)
-                                except Provider.DoesNotExist:
-                                    logging.info(f"Skipping order {order.get('orderid')} for patient {patient.original_id}: Provider {referring_provider_id} not in local database.")
-                                    skipped_count += 1
-                                    continue
-                            else:
-                                logging.info(f"Order {order.get('orderid')} for patient {patient.original_id}: No providerid found. Processing without a specific provider.")
-                            
-                            referral_date_str = order.get('createddate') # "11/02/2025"
-                            if not referral_date_str:
-                                referral_date = timezone.now().date()
-                            else:
-                                referral_date = datetime.strptime(referral_date_str, '%m/%d/%Y').date()
-
-                            documenttypeid = order.get('documenttypeid')
-                            rvu_calculated_cost = Decimal("0.00")
-                            logging.info(f"--- RVU Calculation for documenttypeid: {documenttypeid} ---")
-                            if documenttypeid:
-                                try:
-                                    cpt_mapping = CPTCodeMapping.objects.get(ordertypeid=documenttypeid)
-                                    logging.info(f"Found CPTCodeMapping: {cpt_mapping.cpt_code}")
-                                    
-                                    if practice.work_gpci and practice.pe_gpci and practice.mp_gpci and practice.conversion_factor:
-                                        logging.info(f"Practice GPCI/CF values: wGPCI={practice.work_gpci}, peGPCI={practice.pe_gpci}, mpGPCI={practice.mp_gpci}, CF={practice.conversion_factor}")
-                                        logging.info(f"RVU components: wRVU={cpt_mapping.work_rvu}, peRVU={cpt_mapping.non_fac_pe_rvu}, mpRVU={cpt_mapping.mp_rvu}")
-
-                                        total_rvu = (cpt_mapping.work_rvu * practice.work_gpci) + \
-                                                    (cpt_mapping.non_fac_pe_rvu * practice.pe_gpci) + \
-                                                    (cpt_mapping.mp_rvu * practice.mp_gpci)
-                                        logging.info(f"Calculated Total RVU: {total_rvu}")
-
-                                        rvu_calculated_cost = total_rvu * practice.conversion_factor
-                                        logging.info(f"Final Calculated RVU Cost: {rvu_calculated_cost}")
-                                    else:
-                                        logging.warning(f"Practice '{practice.name}' is missing GPCI or Conversion Factor values. Cannot calculate RVU cost.")
-
-                                except CPTCodeMapping.DoesNotExist:
-                                    logging.info(f"No CPTCodeMapping found for documenttypeid {documenttypeid}")
-                                except Exception as e:
-                                    logging.error(f"Error calculating RVU cost for documenttypeid {documenttypeid}: {e}")
-                            else:
-                                logging.info("No documenttypeid found in order. Cannot calculate RVU cost.")
-                            logging.info("--- End RVU Calculation ---")
-
-                            defaults = {
-                                'patient': patient,
-                                'in_network': provider.is_in_network if provider else False,
-                                'rvu_cost': rvu_calculated_cost,
-                            }
-                            if provider:
-                                defaults['provider'] = provider
-                            if referral_date:
-                                defaults['referral_date'] = referral_date
-                            if provider and provider.specialty:
-                                defaults['specialty'] = provider.specialty
-                            if order.get("status"):
-                                defaults['status'] = order.get("status").lower()
-                            if order.get('encounterid'):
-                                defaults['athena_encounter_id'] = order.get('encounterid')
-                            if documenttypeid:
-                                defaults['documenttypeid'] = documenttypeid
-                            defaults['practice'] = practice
-
-                            referral, created = Referral.objects.update_or_create(
-                                athena_document_id=order.get('orderid'),
-                                defaults=defaults
-                            )
-                            if created:
-                                referrals_created_count += 1
-                            else:
-                                referrals_updated_count += 1
-                    
-                    except requests.exceptions.HTTPError as e:
-                        # It is expected that a patient will not exist in all departments.
-                        # We can safely ignore this specific error.
-                        if e.response.status_code == 400 and "The specified patient does not exist in that department" in e.response.text:
-                            # This is an expected error, so we don't log it as an error.
-                            logging.info(f"Patient {patient.original_id} not in department {dept_id}. Skipping.")
-                        else:
-                            # For any other errors, we still want to log them.
-                            logging.error(f"Failed to sync referrals for patient {patient.original_id} and department {dept_id}: {e}")
-                            yield f"  ERROR: Failed to sync referrals for patient {patient.original_id} and department {dept_id}. See logs."
-                        continue # Continue to the next department
-                    
-                    except Exception as e:
-                        # Catch any other unexpected errors
-                        logging.error(f"An unexpected error occurred for patient {patient.original_id} and department {dept_id}: {e}")
-                        yield f"  ERROR: An unexpected error occurred for patient {patient.original_id} and department {dept_id}. See logs."
-                        continue
-
-        yield f"Synced referrals. Created: {referrals_created_count}, Updated: {referrals_updated_count}, Skipped: {skipped_count}."
+        yield from _sync_providers(athena_practice_id, token, headers, practice, debug_file)
     except Exception as e:
-        logging.error(f"An unexpected error occurred during referral sync: {e}")
+        ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during provider sync: {e}"})
+        return
+    # --- Step 3: Sync Patients (Concurrent with Rate Limiting) ---
+    yield "\nStep 3: Syncing Patients (using concurrency and rate limiting)..."
+    try:
+        yield from _sync_patients(athena_practice_id, token, debug_file)
+    except Exception as e:
+        ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during patient sync: {e}"})
+        return
+    # --- Step 4: Sync Referrals (Concurrent with Rate Limiting) ---
+    yield "\nStep 4: Syncing Referrals (using concurrency and rate limiting)..."
+    try:
+        yield from _sync_referrals(athena_practice_id, token, practice, debug_file)
+    except Exception as e:
+        logging.error(f"An unexpected error occurred during referral sync: {e}", exc_info=True)
         yield f"ERROR during Referral Sync: {e}. Aborting."
         ImportLog.objects.update_or_create(task_name=task_name, defaults={"last_run_at": current_run_time, "status": "failed", "notes": f"Failed during referral sync: {e}"})
         return
     
     # --- Finalize ---
-    final_notes = f"Sync complete. Synced providers, patients, and referrals (created: {referrals_created_count}, updated: {referrals_updated_count})."
+    final_notes = f"Sync complete. Synced providers, patients, and referrals (created:, updated:)."
     ImportLog.objects.update_or_create(
         task_name=task_name,
         defaults={"last_run_at": current_run_time, "status": "success", "notes": final_notes}

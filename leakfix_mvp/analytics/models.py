@@ -37,6 +37,12 @@ class Practice(models.Model):
         return self.name
 
 
+class Department(models.Model):
+    department_id = models.CharField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.department_id
+
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     practice = models.ForeignKey(Practice, on_delete=models.CASCADE, null=True, blank=True)
@@ -72,7 +78,7 @@ class Provider(models.Model):
     createencounteroncheckin = models.BooleanField(default=False, blank=True, null=True)
 
     class Meta:
-        unique_together = (('providerid',),)
+        pass
 
     def __str__(self) -> str:
         return f"{self.full_name} ({self.specialty})"
@@ -81,8 +87,6 @@ class Provider(models.Model):
 class Patient(models.Model):
     original_id = EncryptedCharField(max_length=120, unique=True)
     pseudonym = models.CharField(max_length=64, unique=True, editable=False)
-    first_name = EncryptedCharField(max_length=100, blank=True, null=True)
-    last_name = EncryptedCharField(max_length=100, blank=True, null=True)
 
     def save(self, *args, **kwargs) -> None:
         if not self.pseudonym:
@@ -110,9 +114,9 @@ class Referral(models.Model):
     provider = models.ForeignKey(Provider, on_delete=models.SET_NULL, null=True)
     payer = models.ForeignKey(Payer, on_delete=models.SET_NULL, null=True, blank=True)
     practice = models.ForeignKey(Practice, on_delete=models.CASCADE, null=True, blank=True)
-    specialty = models.CharField(max_length=120, blank=True)  # NEW: record referral specialty
+    specialty = models.CharField(max_length=120, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
-    in_network = models.BooleanField(default=True)
+    is_in_practice_network = models.BooleanField(default=True)
     is_urgent = models.BooleanField(default=False)
     documenttypeid = models.CharField(max_length=50, blank=True, null=True)
     rvu_cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
@@ -132,6 +136,8 @@ class Referral(models.Model):
 
     def __str__(self) -> str:
         return f"Referral ({self.patient}) → {self.provider}"
+
+
 
 class Metric(models.Model):
     name = models.CharField(max_length=100)

@@ -44,7 +44,7 @@
                                 <span class="badge badge-{{ referral.status|lower }}">{{ referral.get_status_display }}</span>
                             </td>
                             <td>
-                                {% if referral.in_network %}
+                                {% if referral.is_in_practice_network %}
                                     <span class="badge badge-success">Yes</span>
                                 {% else %}
                                     <span class="badge badge-danger">No</span>

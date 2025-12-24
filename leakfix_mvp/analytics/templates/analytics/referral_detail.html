@@ -11,7 +11,7 @@
     {% endif %}
 </p>
 <p><strong>Status:</strong> <span id="referral-status-badge" class="badge badge-{{ referral.status|lower }}" data-status="{{ referral.status|lower }}">{{ referral.get_status_display }}</span></p>
-<p><strong>In‑Practice‑Network:</strong> {{ referral.in_network }}</p>
+<p><strong>In‑Practice‑Network:</strong> {{ referral.is_in_practice_network }}</p>
 <p><strong>Leakage:</strong> ${{ referral.rvu_cost|floatformat:2 }}</p>
 <p><strong>Notes to Provider:</strong> {{ referral.provider_note|default:"N/A" }}</p>
 <p><strong>Notes to Patient:</strong> {{ referral.note_to_patient|default:"N/A" }}</p>
