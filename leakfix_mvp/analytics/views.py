@@ -1335,9 +1335,9 @@ def management(request):
             try:
                 practice = Practice.objects.get(id=practice_id)
                 # Reset all providers for this practice
-                practice.provider_set.update(is_in_network=False)
+                practice.provider_set.update(is_in_practice_network=False)
                 # Set in-network for the provided list
-                practice.provider_set.filter(providerid__in=in_network_ids).update(is_in_network=True)
+                practice.provider_set.filter(providerid__in=in_network_ids).update(is_in_practice_network=True)
                 messages.success(request, f"In-network providers updated for {practice.name}.")
             except Practice.DoesNotExist:
                 messages.error(request, "Practice not found.")
