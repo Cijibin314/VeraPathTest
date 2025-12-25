@@ -34,9 +34,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for referral in referrals %}
+                        {% for referral in page_obj %}
                         <tr>
-                            <td>{{ referral.patient.first_name }} {{ referral.patient.last_name }}</td>
+                            <td>{{ referral.patient.first_name }} {{ referral.patient.last_name }} ({{ referral.patient.original_id }})</td>
                             <td>{% if referral.provider %}{{ referral.provider }}{% endif %}</td>
                             <td>{{ referral.specialty }}</td>
                             <td>{{ referral.referral_date }}</td>
@@ -62,6 +62,25 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="pagination">
+                <span class="step-links">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1{% if query %}&q={{ query }}{% endif %}">&laquo; first</a>
+                        <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">previous</a>
+                    {% endif %}
+            
+                    <span class="current">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                    </span>
+            
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">next</a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}">last &raquo;</a>
+                    {% endif %}
+                </span>
+            </div>
+
         </div>
     </div>
 </div>

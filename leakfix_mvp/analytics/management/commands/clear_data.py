@@ -10,7 +10,6 @@ class Command(BaseCommand):
         # The order of deletion matters to avoid foreign key constraint issues.
         # Start with models that have foreign keys to other models.
 
-
         # ReferralHistory.objects.all().delete()
         # self.stdout.write(self.style.SUCCESS('Successfully deleted all ReferralHistory objects.'))
         
@@ -20,8 +19,8 @@ class Command(BaseCommand):
         # Patient.objects.all().delete()
         # self.stdout.write(self.style.SUCCESS('Successfully deleted all Patient objects.'))
 
-        Provider.objects.all().delete()
-        self.stdout.write(self.style.SUCCESS('Successfully deleted all Provider objects.'))
+        # Provider.objects.all().delete()
+        # self.stdout.write(self.style.SUCCESS('Successfully deleted all Provider objects.'))
 
         # Invoice.objects.all().delete()
         # self.stdout.write(self.style.SUCCESS('Successfully deleted all Invoice objects.'))

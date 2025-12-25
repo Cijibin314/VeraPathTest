@@ -1,0 +1,4 @@
+1,21,102,144,145,148,150,157,162,166,168
+1,21,102,144,145,148,150,157,162,166,168
+
+Idea: In patinet syncing, organize the department list by most patinets in oder to maximize effficiency of referral getting

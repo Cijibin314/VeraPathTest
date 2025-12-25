@@ -88,10 +88,11 @@ def get_token():
              logging.error(f"Response Body: {e.response.text}")
          return None
 
-def get(endpoint, practice_id, token, params=None, retry_on_auth_error=True):
+def get(endpoint, practice_id, token, params=None, retry_on_auth_error=True, retry_count=0, expected_errors_substrings=None):
     """
-    Perform a GET request against the Athenahealth API, with retry logic for expired tokens.
+    Perform a GET request against the Athenahealth API, with retry logic for expired tokens and rate limiting.
     """
+    MAX_RETRIES = 3
     rate_limiter.acquire()
     base_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}" 
     url = f"{base_url}/{endpoint.lstrip('/')}"
@@ -107,28 +108,41 @@ def get(endpoint, practice_id, token, params=None, retry_on_auth_error=True):
         response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as e:
+        # First, check if this is an expected error that the caller will handle.
+        if expected_errors_substrings is not None and e.response is not None and e.response.text is not None:
+            for substring in expected_errors_substrings:
+                if substring.lower() in e.response.text.lower():
+                    logging.info(f"Athena API Expected Error (handled by caller)")
+                    raise e # Re-raise for the caller, which expects to handle this.
+
+        # If it's not an expected error, proceed with retry/error logic.
         if retry_on_auth_error and e.response.status_code == 401:
             try:
                 error_json = e.response.json()
                 if error_json.get("error") == "Access Token Expired." or "Token Expired" in error_json.get("detailedmessage", ""):
                     logging.warning("Access token expired. Attempting to refresh and retry request.")
-                    new_token = get_token() # Force a token refresh (it will use cache if valid, or get new)
+                    cache.delete('athena_api_token') # Delete expired token from cache first
+                    new_token = get_token() # Then get a new token
                     if new_token:
-                        # Clear cache for the old token to ensure new one is used
-                        cache.delete('athena_api_token') 
                         logging.info("Retrying request with new access token.")
-                        return get(endpoint, practice_id, new_token, params=params, retry_on_auth_error=False) # Retry once
+                        # Retry with the new token, but don't get stuck in a retry loop for auth errors.
+                        return get(endpoint, practice_id, new_token, params=params, retry_on_auth_error=False, retry_count=retry_count, expected_errors_substrings=expected_errors_substrings)
                     else:
                         logging.error("Failed to get a new token for retry.")
             except json.JSONDecodeError:
                 logging.error(f"Could not decode error response as JSON for 401: {e.response.text}")
 
         elif e.response.status_code == 429:
-            logging.warning("Rate limit quota exceeded. Waiting 1 second and retrying...")
-            time.sleep(1)
-            return get(endpoint, practice_id, token, params=params, retry_on_auth_error=retry_on_auth_error)
-
-        logging.error(f"Athena API Error Response Body: {e.response.text}")
-        raise # Re-raise the exception after logging
+            if retry_count < MAX_RETRIES:
+                wait_time = 2 ** retry_count  # Exponential backoff: 1s, 2s, 4s
+                logging.warning(f"Rate limit quota exceeded. Waiting {wait_time} seconds and retrying ({retry_count + 1}/{MAX_RETRIES})...")
+                time.sleep(wait_time)
+                return get(endpoint, practice_id, token, params=params, retry_on_auth_error=retry_on_auth_error, retry_count=retry_count + 1, expected_errors_substrings=expected_errors_substrings)
+            else:
+                logging.error(f"Rate limit quota exceeded. Max retries ({MAX_RETRIES}) reached for {full_url}.")
         
-    return response.json()
+        # If the error was not an expected one and not handled by retry logic, log it as an error.
+        logging.error(f"Unhandled Athena API Error: {e.response.status_code} - {e.response.text}")
+        
+        raise # Always re-raise the exception after logging
+

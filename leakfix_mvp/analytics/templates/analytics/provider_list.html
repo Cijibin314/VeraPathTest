@@ -2,17 +2,11 @@
 
 {% block content %}
 <h2>Provider Directory</h2>
-<form id="search-form" method="get" style="margin-bottom: 1rem;">
-  <input type="text" name="q" value="{{ query }}" placeholder="Search providers (name, specialty, city)" style="padding: 0.5rem; width: 300px;" oninput="searchProviders(event.target.value)" />
+<form method="get" action="." style="margin-bottom: 1rem;">
+  <input type="text" name="q" value="{{ query }}" placeholder="Search providers (name, specialty, city)" style="padding: 0.5rem; width: 300px;" />
+  <button type="submit">Search</button>
 </form>
 <p style="margin-top: 1rem;">⭐ indicates a preferred provider based on ACO contract, geography, or accepted payers.</p>
-
-<script>
-  const searchForm = document.getElementById('search-form');
-  searchForm.addEventListener('submit', (event) => {
-    event.preventDefault(); // Prevent form submission on Enter key
-  });
-</script>
 
 <table id="provider-table">
   <thead>
@@ -27,7 +21,7 @@
     </tr>
   </thead>
   <tbody>
-    {% for provider in providers %}
+    {% for provider in page_obj %}
       <tr>
         <td>
           {{ provider.full_name }}
@@ -44,54 +38,28 @@
       </tr>
     {% empty %}
       <tr>
-        <td colspan="9">No providers found.</td>
+        <td colspan="7">No providers found.</td>
       </tr>
     {% endfor %}
   </tbody>
 </table>
 
-<script>
-  const providerTableBody = document.querySelector('#provider-table tbody');
-  const searchInput = document.querySelector('input[name="q"]'); // Get the search input element
+<div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1">&laquo; first</a>
+            <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+        {% endif %}
 
-  async function searchProviders(query) {
-    const response = await fetch(`{% url 'analytics:provider_search' %}?q=${query}`);
-    const providers = await response.json();
-    console.log("Providers received from AJAX:", providers); // Keep this for debugging if needed
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+        </span>
 
-    providerTableBody.innerHTML = ''; // Clear existing table rows
-
-    if (providers.length > 0) {
-      for (const provider of providers) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>
-            ${provider.full_name}
-            ${provider.is_preferred ? '<span title="Preferred Provider">⭐</span>' : ''}
-          </td>
-          <td>${provider.specialty || ''}</td>
-          <td>${provider.primary_department || ''}</td>
-          <td>${provider.location || ''}</td>
-          <td>${provider.npi || ''}</td>
-          <td>${provider.providerid || ''}</td>
-          <td>${provider.accepting_new_patients === null ? '' : provider.accepting_new_patients}</td>
-        `;
-        providerTableBody.appendChild(row);
-      }
-    } else {
-      const row = document.createElement('tr');
-      row.innerHTML = '<td colspan="9">No providers found.</td>';
-      providerTableBody.appendChild(row);
-    }
-  }
-
-  // Call searchProviders on initial page load with the current query value
-  searchProviders(searchInput.value);
-
-  // Add event listener for input changes
-  searchInput.addEventListener('input', (event) => {
-    searchProviders(event.target.value);
-  });
-</script>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+        {% endif %}
+    </span>
+</div>
 
 {% endblock %}
