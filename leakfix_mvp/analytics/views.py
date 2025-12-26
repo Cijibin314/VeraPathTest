@@ -278,8 +278,11 @@ def create_referral(request):
             # The in_practice_network status is now determined by the provider's own flag
             is_in_practice_network = provider.is_in_practice_network
 
-            patient_id = form.cleaned_data['patient_id']
-            patient, _ = Patient.objects.get_or_create(original_id=patient_id)
+            pseudonym = hashlib.sha256(str(patient_id).encode()).hexdigest()
+            patient, _ = Patient.objects.get_or_create(
+                pseudonym=pseudonym,
+                defaults={'original_id': patient_id}
+            )
             payer_code = form.cleaned_data.get('payer_code')
             payer = None
             if payer_code:
@@ -1052,12 +1055,27 @@ def create_referral_order_ajax(request):
             logging.info(f"Successfully verified diagnosis on encounter {encounter_id}.")
 
             # Step 4: Create the referral order document
+            provider_id_for_note = data['provider_id']
+            # Fetch the provider object to get full_name and providerid for the note
+            # This assumes provider_id in data corresponds to a provider in our local DB
+            try:
+                provider_obj_for_note = Provider.objects.get(providerid=provider_id_for_note, practices=user_practice)
+                prefix_message = f"--Auto-Generated---This referral is intended for {provider_obj_for_note.full_name} with ID {provider_obj_for_note.providerid}--End Auto-Generated--.\n"
+            except Provider.DoesNotExist:
+                logging.warning(f"Provider with providerid {provider_id_for_note} not found in local DB for note generation.")
+                prefix_message = "" # No prefix if provider not found
+
+            # Prepend the message to the existing providernote
+            # Ensure we handle cases where 'providernote' might not be in data or is empty
+            original_provider_note = data.get('providernote', '')
+            updated_provider_note = prefix_message + original_provider_note
+
             referral_order_payload = {
                 'ordertypeid': order_type_id,
                 'dateofservice': data.get('dateofservice', datetime.now().strftime('%m/%d/%Y')),
                 'diagnosissnomedcode': diagnosis_code,
                 'highpriority': data.get('is_urgent', False),
-                'providernote': data.get('providernote', ''),
+                'providernote': updated_provider_note, # Use the updated note here
                 'notetopatient': data.get('notetopatient', ''),
             }
             
@@ -1092,13 +1110,17 @@ def create_referral_order_ajax(request):
             specialty = order_summary.get('specialty', data.get('specialty')) if order_summary else data.get('specialty')
 
             # Notes are not in the summary, so we must use the data from our form.
-            provider_note = data.get('providernote', '')
+            provider_note = updated_provider_note
             note_to_patient = data.get('notetopatient', '')
 
             # Create local referral
             provider_id = data['provider_id']
             provider = Provider.objects.get(providerid=provider_id, practices=user_practice)
-            patient, _ = Patient.objects.get_or_create(original_id=patient_id)
+            pseudonym = hashlib.sha256(str(patient_id).encode()).hexdigest()
+            patient, _ = Patient.objects.get_or_create(
+                pseudonym=pseudonym,
+                defaults={'original_id': patient_id}
+            )
             
             payer = None
             patient_insurance_id = data.get('patientinsuranceid')
