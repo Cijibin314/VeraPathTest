@@ -1,4 +1,13 @@
-1,21,102,144,145,148,150,157,162,166,168
-1,21,102,144,145,148,150,157,162,166,168
-
-Idea: In patinet syncing, organize the department list by most patinets in oder to maximize effficiency of referral getting
+{'middleinitial': 'M', 
+'acceptingnewpatients': True, 
+'sex': 'M', 
+'entitytype': 'Person',
+ 'ansinamecode': 'Nursing Service Providers : Registered Nurse : Reproductive Endocrinology/Infertility (163WR1000X)', 
+ 'hideinportal': False, 
+ 'providerid': 1911, 
+ 'firstname': 'Bryan', 
+ 'lastname': 'Adamczyk', 
+ 'schedulingname': 'c6ac8c30-c1b0-4', 
+ 'billable': False, 
+ 'ansispecialtycode': '163WR1000X', 
+ 'createencounteroncheckin': False}

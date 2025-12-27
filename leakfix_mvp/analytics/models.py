@@ -68,15 +68,8 @@ class Provider(models.Model):
     providerid = models.IntegerField(blank=True, null=True)
     firstname = models.CharField(max_length=100, blank=True, null=True)
     lastname = models.CharField(max_length=100, blank=True, null=True)
-    middleinitial = models.CharField(max_length=1, blank=True, null=True)
-    sex = models.CharField(max_length=1, blank=True, null=True)
-    entitytype = models.CharField(max_length=50, blank=True, null=True)
-    ansinamecode = models.CharField(max_length=255, blank=True, null=True)
-    hideinportal = models.BooleanField(default=False, blank=True, null=True)
-    schedulingname = models.CharField(max_length=200, blank=True, null=True)
+    middleinitial = models.CharField(max_length=10, blank=True, null=True)
     billable = models.BooleanField(default=False, blank=True, null=True)
-    ansispecialtycode = models.CharField(max_length=50, blank=True, null=True)
-    createencounteroncheckin = models.BooleanField(default=False, blank=True, null=True)
 
     class Meta:
         pass

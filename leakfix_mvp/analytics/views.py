@@ -1733,6 +1733,24 @@ def _sync_providers(athena_practice_id, headers, practice, debug_file):
         response.raise_for_status()
         providers_data = response.json().get("providers", [])
 
+        # --- Reconciliation Step ---
+        athena_provider_ids = {str(p.get("providerid")) for p in providers_data if p.get("providerid")}
+        
+        local_providers_qs = practice.provider_set.all()
+        local_provider_ids = {str(p.providerid) for p in local_providers_qs if p.providerid}
+        
+        ids_to_disassociate = local_provider_ids - athena_provider_ids
+        
+        if ids_to_disassociate:
+            providers_to_disassociate = local_providers_qs.filter(providerid__in=ids_to_disassociate)
+            for provider in providers_to_disassociate:
+                provider.practices.remove(practice)
+                msg = f"  Disassociated provider {provider.full_name} (ID: {provider.providerid}) from practice {practice.name} as they are no longer in the API list."
+                yield msg
+                if debug_file:
+                    debug_file.write(msg + "\n")
+        # --- End Reconciliation ---
+
         created_count = 0
         updated_count = 0
         for provider_data in providers_data:
@@ -1743,9 +1761,18 @@ def _sync_providers(athena_practice_id, headers, practice, debug_file):
                 continue
 
             defaults = {
-                'full_name': provider_data.get("displayname", ""),
+                'full_name': provider_data.get("displayname", provider_data.get("firstname", "") + " " + provider_data.get("lastname", "")),
+                'firstname': provider_data.get("firstname", ""),
+                'lastname': provider_data.get("lastname", ""),
+                'middleinitial': provider_data.get("middleinitial", ""),
                 'specialty': provider_data.get("specialty", ""),
+                'subspecialty': provider_data.get("providertype", ""),
+                'city': provider_data.get("city", ""),
+                'state': provider_data.get("state", ""),
+                'primary_department': provider_data.get("homedepartment", ""),
                 'providerid': provider_id,
+                'accepting_new_patients': provider_data.get("acceptingnewpatients", False),
+                'billable': provider_data.get("billable", False),
             }
             
             provider = None
@@ -1758,23 +1785,19 @@ def _sync_providers(athena_practice_id, headers, practice, debug_file):
                     defaults=defaults
                 )
             else:
-                # No NPI. This provider can't be uniquely identified globally.
-                # Try to find a provider with this providerid already linked to this practice.
-                existing_providers = Provider.objects.filter(providerid=provider_id, practices=practice)
-                if existing_providers.exists():
-                    provider = existing_providers.first()
-                    provider.full_name = defaults['full_name']
-                    provider.specialty = defaults['specialty']
+                # No NPI. Try to find a provider with this providerid across all practices
+                # that also doesn't have an NPI, to avoid incorrectly merging with an NPI-d provider.
+                existing_provider = Provider.objects.filter(providerid=provider_id, npi__isnull=True).first()
+
+                if existing_provider:
+                    provider = existing_provider
+                    # Update all fields from the defaults dictionary
+                    for key, value in defaults.items():
+                        setattr(provider, key, value)
                     provider.save()
                     created = False
-                    if existing_providers.count() > 1:
-                        msg = f"WARNING: Found multiple providers with providerid {provider_id} for practice {practice.name}. Using the first one."
-                        yield msg
-                        if debug_file:
-                            debug_file.write(msg + "\n")
                 else:
-                    # To be safe and avoid incorrect linking, we create a new provider record.
-                    # This may lead to duplicates if the same no-NPI provider works at multiple synced practices.
+                    # No provider found with this providerid, create a new one.
                     provider = Provider.objects.create(**defaults)
                     created = True
 
