@@ -3,19 +3,11 @@ from analytics.models import Referral, Patient, Provider, Invoice, Metric, Refer
 import hashlib
 
 class Command(BaseCommand):
-    help = 'Clears the database of all data except for practices and users.'
-
     def handle(self, *args, **options):
         self.stdout.write('Starting...')
-        num = 60183
+        num = 71
         pseudonym_for_lookup = hashlib.sha256(str(num).encode()).hexdigest()
 
-        Patient.objects.update_or_create(
-            pseudonym=pseudonym_for_lookup,
-            defaults={
-                "original_id": 60183,
-                "first_name": "Gary",
-                "last_name": "Sandboxtest",
-            }
-        )
+        provider = Provider.objects.get(pseudonym=pseudonym_for_lookup)
+        self.stdout.write(provider)
         self.stdout.write(self.style.SUCCESS('Success'))

@@ -55,6 +55,14 @@
         </td>
     </tr>
     <tr>
+        <th><label for="id_patient_insurance_id">Payer (optional)</label></th>
+        <td>
+            <select name="patient_insurance_id" id="id_patient_insurance_id" style="width: 100%; padding: 0.5rem;">
+                <option value="">--- select a patient first ---</option>
+            </select>
+        </td>
+    </tr>
+    <tr>
         <th><label for="id_specialty">Specialty</label></th>
         <td>
             {{ form.specialty }}
@@ -90,14 +98,6 @@
             <input type="hidden" name="ordertypeid" id="id_ordertypeid" />
             <div id="ordertype-search-results" style="border: 1px solid #ccc; max-height: 150px; overflow-y: auto; display: none; position: absolute; background-color: white; width: 100%; z-index: 100;"></div>
             <span id="ordertype-loading-indicator" style="display: none; margin-left: 5px;" class="animated-dots"><span>.</span><span>.</span><span>.</span></span>
-        </td>
-    </tr>
-    <tr>
-        <th><label for="id_patient_insurance_id">Payer (optional)</label></th>
-        <td>
-            <select name="patient_insurance_id" id="id_patient_insurance_id" style="width: 100%; padding: 0.5rem;">
-                <option value="">--- select a patient first ---</option>
-            </select>
         </td>
     </tr>
     <tr>
@@ -335,6 +335,7 @@
                         patientIdInput.value = patientId;
                         patientSearchResults.style.display = 'none';
                         fetchAndPopulateInsurances(patientId); // Fetch insurances when patient is selected
+                        sortProviderDropdown(); // Re-sort providers
                         saveFormState();
                     });
                     patientSearchResults.appendChild(resultItem);
@@ -390,28 +391,56 @@
 
         async function sortProviderDropdown() {
             const selectedSpecialty = specialtyInput.value;
-            let url = '{% url "analytics:get_sorted_providers_ajax" %}';
+            const patientId = patientIdInput.value;
+            const patientInsuranceId = patientInsuranceSelect.value;
+            
+            const params = new URLSearchParams();
             if (selectedSpecialty) {
-                url += `?specialty=${encodeURIComponent(selectedSpecialty)}`;
+                params.append('specialty', selectedSpecialty);
             }
+            if (patientId) {
+                params.append('patient_id', patientId);
+            }
+            if (patientInsuranceId) {
+                params.append('patient_insurance_id', patientInsuranceId);
+            }
+
+            const url = `{% url "analytics:get_sorted_providers_ajax" %}?${params.toString()}`;
+
+            const currentProviderValue = providerSelect.value; // Store current value before clearing
+
+            providerSelect.innerHTML = '<option value="">--- Loading... ---</option>';
+            providerSelect.disabled = true;
+
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const sortedProviders = await response.json();
-                const currentProviderValue = providerSelect.value;
-                providerSelect.innerHTML = '<option value="">--- select provider ---</option>';
+                
+                providerSelect.innerHTML = '<option value="">--- select provider ---</option>'; // Clear "Loading..."
                 sortedProviders.forEach(provider => {
                     const option = document.createElement('option');
                     option.value = provider.providerid;
                     option.dataset.npi = provider.npi;
-                    option.textContent = provider.full_name + (provider.specialty ? ` (${provider.specialty})` : '');
+                    let providerName = provider.full_name;
+                    if (provider.specialty) {
+                        providerName += ` (${provider.specialty})`;
+                    }
+                    if (provider.is_in_insurance_network_for_patient) {
+                        providerName += ' *in plan network*';
+                    }
+                    option.textContent = providerName;
                     providerSelect.appendChild(option);
                 });
-                if (currentProviderValue) {
+                // Attempt to restore the previously selected value
+                if (currentProviderValue && Array.from(providerSelect.options).some(option => option.value === currentProviderValue)) {
                     providerSelect.value = currentProviderValue;
                 }
             } catch (error) {
                 console.error('Error sorting providers:', error);
+                providerSelect.innerHTML = '<option value="">--- Error loading providers ---</option>';
+            } finally {
+                providerSelect.disabled = false; // Re-enable the select field
             }
         }
 
@@ -586,7 +615,10 @@
             }
         });
         
-        patientInsuranceSelect.addEventListener('change', saveFormState);
+        patientInsuranceSelect.addEventListener('change', () => {
+            saveFormState();
+            sortProviderDropdown();
+        });
 
         providerSelect.addEventListener('change', () => {
             saveFormState();

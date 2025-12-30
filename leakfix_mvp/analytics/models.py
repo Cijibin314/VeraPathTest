@@ -54,6 +54,7 @@ class UserProfile(models.Model):
 
 class Provider(models.Model):
     practices = models.ManyToManyField(Practice, blank=True)
+
     npi = models.CharField(max_length=20, blank=True, null=True)
     full_name = models.CharField(max_length=200)
     specialty = models.CharField(max_length=120, blank=True, null=True)

@@ -768,8 +768,11 @@ def get_provider_details_ajax(request, providerid):
         return JsonResponse({'error': str(e)}, status=500)
 
 def get_sorted_providers_ajax(request):
+    logging.info("Starting get_sorted_providers_ajax")
     specialty = request.GET.get('specialty', '')
-    
+    patient_id = request.GET.get('patient_id')
+    patient_insurance_id = request.GET.get('patient_insurance_id')
+
     if request.user.is_superuser:
         all_providers_qs = Provider.objects.all()
     else:
@@ -782,7 +785,6 @@ def get_sorted_providers_ajax(request):
         except (UserProfile.DoesNotExist, AttributeError):
             all_providers_qs = Provider.objects.none()
 
-    # De-duplicate providers in Python
     unique_providers = []
     seen_names = set()
     for provider in all_providers_qs:
@@ -792,38 +794,73 @@ def get_sorted_providers_ajax(request):
 
     all_providers = unique_providers
 
-    # Calculate completeness score for all providers
-    for provider in all_providers:
+    for p in all_providers:
         score = 0
-        if provider.full_name: score += 1
-        if provider.specialty: score += 1
-        if provider.subspecialty: score += 1
-        if provider.city: score += 1
-        if provider.state: score += 1
-        if provider.npi: score += 1
-        if provider.accepting_new_patients is not None: score += 1
-        if provider.primary_department: score += 1
-        provider.completeness_score = score
+        if p.full_name: score += 1
+        if p.specialty: score += 1
+        if p.subspecialty: score += 1
+        if p.city: score += 1
+        if p.state: score += 1
+        if p.npi: score += 1
+        if p.accepting_new_patients is not None: score += 1
+        if p.primary_department: score += 1
+        p.completeness_score = score
+
+    provider_in_network_map = {p.id: False for p in all_providers}
+
+    if patient_id and patient_insurance_id:
+        try:
+            user_practice = request.user.userprofile.practice
+            practice_id = user_practice.athena_practice_id
+            token = get_token()
+
+            def check_provider_network_status(provider):
+                try:
+                    params = {
+                        'patientid': patient_id,
+                        'providerid': provider.providerid,
+                    }
+                    claims_data = get('claims', practice_id, token, params=params)
+                    if claims_data and 'claims' in claims_data:
+                        for claim in claims_data['claims']:
+                            primary_payer_info = claim.get('primaryinsurancepayer', {})
+                            if str(primary_payer_info.get('primarypatientinsuranceid')) == str(patient_insurance_id):
+                                logging.info(f"Provider {provider.full_name} ({provider.providerid}) is IN-NETWORK for patient {patient_id} with insurance {patient_insurance_id}.")
+                                return (provider.id, True)
+                        logging.info(f"Provider {provider.full_name} ({provider.providerid}) is OUT-OF-NETWORK for patient {patient_id} with insurance {patient_insurance_id} (no matching claims found).")
+                except Exception as e:
+                    logging.error(f"Error checking network status for provider {provider.full_name} ({provider.providerid}) with patient {patient_id} and insurance {patient_insurance_id}: {e}")
+                return (provider.id, False)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                future_to_provider_id = {executor.submit(check_provider_network_status, p): p.id for p in all_providers}
+                for future in concurrent.futures.as_completed(future_to_provider_id):
+                    provider_id, is_in_network = future.result()
+                    provider_in_network_map[provider_id] = is_in_network
+        except Exception as e:
+            logging.error(f"Failed to check in-network status for providers: {e}", exc_info=True)
 
     if specialty:
-        # Separate providers into matching and non-matching specialty groups
         matching_specialty_providers = [p for p in all_providers if p.specialty and p.specialty.lower() == specialty.lower()]
         other_providers = [p for p in all_providers if not p.specialty or p.specialty.lower() != specialty.lower()]
 
-        # Sort each group by completeness_score (descending) then full_name (ascending)
-        matching_specialty_providers.sort(key=lambda p: (p.completeness_score, p.full_name.strip() or 'No Name'), reverse=True)
-        other_providers.sort(key=lambda p: (p.completeness_score, p.full_name.strip() or 'No Name'), reverse=True)
+        matching_specialty_providers.sort(key=lambda p: (provider_in_network_map.get(p.id, False), p.completeness_score, p.full_name.strip() or 'No Name'), reverse=True)
+        other_providers.sort(key=lambda p: (provider_in_network_map.get(p.id, False), p.completeness_score, p.full_name.strip() or 'No Name'), reverse=True)
 
-        # Combine, with matching specialty providers first
         providers_to_return = matching_specialty_providers + other_providers
     else:
-        # If no specialty selected, sort all providers by completeness_score (descending) then full_name (ascending)
-        all_providers.sort(key=lambda p: (p.completeness_score, p.full_name.strip() or 'No Name'), reverse=True)
+        all_providers.sort(key=lambda p: (provider_in_network_map.get(p.id, False), p.completeness_score, p.full_name.strip() or 'No Name'), reverse=True)
         providers_to_return = all_providers
 
     provider_data = []
     for p in providers_to_return:
-        provider_data.append({'providerid': p.providerid, 'npi': p.npi, 'full_name': p.full_name.strip() or 'No Name', 'specialty': p.specialty or ''})
+        provider_data.append({
+            'providerid': p.providerid, 
+            'npi': p.npi, 
+            'full_name': f"{p.full_name.strip() or 'No Name'}", 
+            'specialty': p.specialty or '',
+            'is_in_insurance_network_for_patient': provider_in_network_map.get(p.id, False),
+        })
     return JsonResponse(provider_data, safe=False)
 
 @login_required
