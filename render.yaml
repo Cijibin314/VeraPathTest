@@ -22,7 +22,7 @@ services:
       - key: PRODUCTION
         value: "True"
 
-  - type: pserv
+  - type: psql
     name: verapath-db
     env: postgres
     plan: free
