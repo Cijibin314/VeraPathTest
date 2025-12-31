@@ -22,8 +22,7 @@ services:
       - key: PRODUCTION
         value: "True"
 
-  - type: psql
-    name: verapath-db
-    env: postgres
+databases:
+  - name: verapath-db
     plan: free
     postgresMajorVersion: 14
