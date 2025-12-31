@@ -16,7 +16,7 @@ services:
       - key: WEB_CONCURRENCY
         value: 4
       - key: PYTHON_VERSION
-        value: 3.9
+        value: 3.9.18
       - key: DJANGO_SETTINGS_MODULE
         value: leakfix_mvp.leakfix.settings
       - key: PRODUCTION
