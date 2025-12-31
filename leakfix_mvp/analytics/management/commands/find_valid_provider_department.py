@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 import requests
-from analytics.athena_client import get_token
+from leakfix_mvp.analytics.athena_client import get_token
 
 class Command(BaseCommand):
     help = "Finds a valid provider-department pair for creating encounters (ordergroups)."

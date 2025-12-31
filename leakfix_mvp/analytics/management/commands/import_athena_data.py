@@ -3,8 +3,8 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand, CommandError
 from django.core.paginator import Paginator
 from django.utils import timezone
-from analytics.models import Provider, Patient, Referral, Payer
-from analytics.athena_client import get_token, get
+from leakfix_mvp.analytics.models import Provider, Patient, Referral, Payer
+from leakfix_mvp.analytics.athena_client import get_token, get
 
 from datetime import datetime
 

@@ -9,8 +9,8 @@ Usage:
 """
 import requests
 from django.core.management.base import BaseCommand, CommandError
-from analytics.models import Provider, Payer, Hospital
-from analytics.athena_client import get_token, get
+from leakfix_mvp.analytics.models import Provider, Payer, Hospital
+from leakfix_mvp.analytics.athena_client import get_token, get
 
 class Command(BaseCommand):
     help = "Imports provider data from athenahealth."

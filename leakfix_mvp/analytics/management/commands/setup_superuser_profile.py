@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from analytics.models import Practice, UserProfile
+from leakfix_mvp.analytics.models import Practice, UserProfile
 
 class Command(BaseCommand):
     help = 'Sets up a profile for the first superuser found and links it to the default practice.'

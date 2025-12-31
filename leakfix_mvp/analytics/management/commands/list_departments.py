@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
-from analytics.models import Practice
-from analytics.athena_client import get_token, get
+from leakfix_mvp.analytics.models import Practice
+from leakfix_mvp.analytics.athena_client import get_token, get
 import logging
 
 logger = logging.getLogger(__name__)

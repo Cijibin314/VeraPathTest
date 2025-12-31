@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from analytics.models import Referral, Patient, Provider, Invoice, Metric, ReferralHistory, Payer, ImportLog
+from leakfix_mvp.analytics.models import Referral, Patient, Provider, Invoice, Metric, ReferralHistory, Payer, ImportLog
 import hashlib
 
 class Command(BaseCommand):

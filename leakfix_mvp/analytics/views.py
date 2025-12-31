@@ -31,7 +31,7 @@ from .models import (
     Department,
 )
 from .forms import ReferralForm
-from analytics.ai_utils import generate_suggestions
+from leakfix_mvp.analytics.ai_utils import generate_suggestions
 import logging
 
 # --- KPI dashboard ---

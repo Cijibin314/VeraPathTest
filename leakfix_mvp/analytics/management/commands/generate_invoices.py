@@ -10,7 +10,7 @@ from datetime import date
 from decimal import Decimal
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Sum
-from analytics.models import Referral, Invoice
+from leakfix_mvp.analytics.models import Referral, Invoice
 
 
 class Command(BaseCommand):

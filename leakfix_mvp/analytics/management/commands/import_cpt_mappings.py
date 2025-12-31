@@ -1,6 +1,6 @@
 import csv
 from django.core.management.base import BaseCommand, CommandError
-from analytics.models import CPTCodeMapping
+from leakfix_mvp.analytics.models import CPTCodeMapping
 
 class Command(BaseCommand):
     help = 'Imports CPT code mappings from a CSV file.'

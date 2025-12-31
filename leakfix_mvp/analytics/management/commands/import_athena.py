@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 import requests
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
-from analytics.models import Patient, Provider, Payer, Referral, ImportLog
+from leakfix_mvp.analytics.models import Patient, Provider, Payer, Referral, ImportLog
 
 class Command(BaseCommand):
     help = "Incrementally imports appointment data from athenahealth."

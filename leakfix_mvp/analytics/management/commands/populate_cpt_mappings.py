@@ -10,7 +10,7 @@ import requests
 from urllib.parse import urlencode
 
 from django.core.management.base import BaseCommand, CommandError
-from analytics.models import CPTCodeMapping
+from leakfix_mvp.analytics.models import CPTCodeMapping
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

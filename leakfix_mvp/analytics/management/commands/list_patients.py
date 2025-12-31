@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from analytics.models import Patient
+from leakfix_mvp.analytics.models import Patient
 
 class Command(BaseCommand):
     help = 'Lists all patients in the database with their IDs and names.'
