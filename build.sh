@@ -4,6 +4,5 @@ set -o errexit
 
 pip install -r requirements.txt
 
-cd leakfix_mvp
-python manage.py collectstatic --noinput
-python manage.py migrate
+python leakfix_mvp/manage.py collectstatic --noinput
+python leakfix_mvp/manage.py migrate
