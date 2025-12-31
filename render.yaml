@@ -2,7 +2,7 @@ services:
   - type: web
     name: verapath
     env: python
-    plan: starter
+    plan: free
     buildCommand: "./build.sh"
     startCommand: "gunicorn leakfix_mvp.leakfix.wsgi:application"
     healthCheckPath: "/"
