@@ -4,15 +4,13 @@ services:
     env: python
     plan: free
     buildCommand: "./build.sh"
-    startCommand: "gunicorn leakfix_mvp.leakfix.wsgi:application"
+    startCommand: "gunicorn --pythonpath leakfix_mvp leakfix_mvp.leakfix.wsgi:application"
     healthCheckPath: "/"
     envVars:
       - key: PYTHONPATH
         value: .
       - key: DATABASE_URL
-        fromDatabase:
-          name: verapath-db
-          property: connectionString
+        value: "REDACTED
       - key: SECRET_KEY
         generateValue: true
       - key: FIELD_ENCRYPTION_KEY
@@ -26,7 +24,4 @@ services:
       - key: PRODUCTION
         value: "True"
 
-databases:
-  - name: verapath-db
-    plan: free
-    postgresMajorVersion: 14
+
