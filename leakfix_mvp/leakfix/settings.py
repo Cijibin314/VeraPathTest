@@ -69,7 +69,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'encrypted_model_fields',
     # Local apps
-    'analytics',
+    'leakfix_mvp.analytics',
 ]
 
 MIDDLEWARE = [
@@ -79,12 +79,12 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'analytics.middleware.CurrentUserMiddleware',
+    'leakfix_mvp.analytics.middleware.CurrentUserMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'leakfix.urls'
+ROOT_URLCONF = 'leakfix_mvp.leakfix.urls'
 
 TEMPLATES = [
     {
@@ -102,7 +102,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'leakfix.wsgi.application'
+WSGI_APPLICATION = 'leakfix_mvp.leakfix.wsgi.application'
 
 
 # Database Configuration

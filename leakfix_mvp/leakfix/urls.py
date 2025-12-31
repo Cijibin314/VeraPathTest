@@ -13,7 +13,7 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('', RedirectView.as_view(url='/analytics/dashboard/')),
-    path('analytics/', include('analytics.urls')),
+    path('analytics/', include('leakfix_mvp.analytics.urls')),
 ]
 
 if settings.DEBUG:
