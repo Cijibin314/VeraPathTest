@@ -41,6 +41,10 @@ PRODUCTION = env('PRODUCTION')
 
 ALLOWED_HOSTS: list[str] = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
+RENDER_EXTERNAL_HOSTNAME = env('RENDER_EXTERNAL_HOSTNAME', default=None)
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
 # Security settings for production environments
 if PRODUCTION:
     SECURE_HSTS_SECONDS = 31536000  # 1 year
@@ -70,6 +74,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -99,29 +104,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'leakfix.wsgi.application'
 
+
 # Database Configuration
-database_url = env('DATABASE_URL')
-if 'postgresql' in database_url:
-    url = urllib.parse.urlparse(database_url)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': url.path[1:],
-            'USER': url.username,
-            'PASSWORD': url.password,
-            'HOST': url.hostname,
-            'PORT': url.port,
-            'OPTIONS': {'sslmode': 'require'},
-        }
-    }
-else:
-    # Fallback to SQLite if DATABASE_URL is not a postgresql URL
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+# Use dj-database-url to automatically parse the DATABASE_URL env var
+DATABASES = {
+    'default': env.db()
+}
+# Add SSL require for postgresql connections in production
+if PRODUCTION and DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -148,6 +139,9 @@ USE_TZ = True
 # Static files
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+if PRODUCTION:
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 

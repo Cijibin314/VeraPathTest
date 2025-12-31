@@ -8,3 +8,4 @@ psycopg2-binary
 django-encrypted-model-fields
 cryptography
 dj-database-url
+whitenoise
