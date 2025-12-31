@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: "./build.sh"
-    startCommand: "gunicorn leakfix_mvp.leakfix.wsgi:application"
+    startCommand: "gunicorn --pythonpath leakfix_mvp leakfix.wsgi:application"
     healthCheckPath: "/"
     envVars:
       - key: DATABASE_URL
