@@ -82,6 +82,8 @@ class Provider(models.Model):
 class Patient(models.Model):
     original_id = EncryptedCharField(max_length=120, unique=True)
     pseudonym = models.CharField(max_length=64, unique=True, editable=False)
+    first_name = EncryptedCharField(max_length=100, blank=True, null=True)
+    last_name = EncryptedCharField(max_length=100, blank=True, null=True)
 
     def save(self, *args, **kwargs) -> None:
         if not self.pseudonym:
@@ -91,7 +93,9 @@ class Patient(models.Model):
     def __str__(self) -> str:
         return f"Patient {self.pseudonym[:8]}"
 
-
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
 
 
 class Referral(models.Model):

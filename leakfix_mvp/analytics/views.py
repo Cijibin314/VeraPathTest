@@ -324,9 +324,12 @@ def referral_list(request):
 
     query = request.GET.get('q')
     if query:
-        referrals_qs = referrals_qs.filter(
+        referrals_qs = referrals_qs.annotate(
+            patient_full_name=Concat('patient__first_name', Value(' '), 'patient__last_name')
+        ).filter(
             Q(patient__original_id__icontains=query) |
             Q(patient__pseudonym__icontains=query) |
+            Q(patient_full_name__icontains=query) |
             Q(provider__full_name__icontains=query) |
             Q(specialty__icontains=query) |
             Q(status__icontains=query)
@@ -2041,10 +2044,15 @@ def _sync_patients(athena_practice_id, token, debug_file):
                     synced_patient_ids.add(athena_patient_id)
                     pseudonym_for_lookup = hashlib.sha256(athena_patient_id.encode()).hexdigest()
 
+                    first_name = patient_data.get("firstname", "")
+                    last_name = patient_data.get("lastname", "")
+
                     _, created = Patient.objects.update_or_create(
                         pseudonym=pseudonym_for_lookup,
                         defaults={
                             "original_id": athena_patient_id,
+                            "first_name": first_name,
+                            "last_name": last_name,
                         }
                     )
                     if created:

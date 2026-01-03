@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Referral Detail</h2>
-<p><strong>Patient:</strong> {{ referral.patient.original_id }}</p>
+<p><strong>Patient:</strong> {{ referral.patient.first_name }} {{ referral.patient.last_name }} ({{ referral.patient.original_id }})</p>
 <p><strong>Provider:</strong> {{ referral.provider.full_name }}</p>
 <p><strong>Payer:</strong> 
     {% if referral.payer %}
