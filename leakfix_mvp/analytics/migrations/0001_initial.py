@@ -127,7 +127,7 @@ class Migration(migrations.Migration):
                 ('billable', models.BooleanField(blank=True, default=False, null=True)),
                 ('ansispecialtycode', models.CharField(blank=True, max_length=50, null=True)),
                 ('createencounteroncheckin', models.BooleanField(blank=True, default=False, null=True)),
-                ('practices', models.ManyToManyField(blank=True, to='analytics.practice')),
+                ('practices', models.ManyToManyField(blank=True, to='leakfix_mvp.analytics.practice')),
             ],
             options={
                 'unique_together': {('providerid',)},
@@ -156,10 +156,10 @@ class Migration(migrations.Migration):
                 ('provider_note', models.TextField(blank=True)),
                 ('note_to_patient', models.TextField(blank=True)),
                 ('visit_summary', models.TextField(blank=True, null=True)),
-                ('patient', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='analytics.patient')),
-                ('payer', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='analytics.payer')),
-                ('practice', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='analytics.practice')),
-                ('provider', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='analytics.provider')),
+                ('patient', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='leakfix_mvp.analytics.patient')),
+                ('payer', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='leakfix_mvp.analytics.payer')),
+                ('practice', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='leakfix_mvp.analytics.practice')),
+                ('provider', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='leakfix_mvp.analytics.provider')),
             ],
         ),
         migrations.CreateModel(
@@ -168,7 +168,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('at', models.DateTimeField(auto_now_add=True)),
                 ('status', models.CharField(max_length=20)),
-                ('referral', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='history', to='analytics.referral')),
+                ('referral', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='history', to='leakfix_mvp.analytics.referral')),
             ],
             options={
                 'ordering': ['-at'],
@@ -178,7 +178,7 @@ class Migration(migrations.Migration):
             name='UserProfile',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('practice', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='analytics.practice')),
+                ('practice', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='leakfix_mvp.analytics.practice')),
                 ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
             ],
         ),

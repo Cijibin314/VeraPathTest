@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='provider',
             name='practices',
-            field=models.ManyToManyField(blank=True, to='analytics.practice'),
+            field=models.ManyToManyField(blank=True, to='leakfix_mvp.analytics.practice'),
         ),
     ]
