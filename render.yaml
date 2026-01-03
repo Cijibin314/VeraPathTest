@@ -9,7 +9,7 @@ services:
   # Django Web Service
   # ------------------
   - name: verapath-web
-    type: web
+    type: bgtask
     plan: free
     # Specifies the runtime environment.
     env: python
