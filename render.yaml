@@ -54,10 +54,10 @@ services:
 envVarGroups:
   - name: verapath-env
     envVars:
-      # You will need to update this with your Athena API credentials.
-      # 'sync: false' prevents the value from being stored in the YAML file.
+      # You will need to update this with your Athena API credentials in the Render dashboard.
+      # 'sync: false' means Render expects you to provide the value in the UI,
+      # and thus no 'value' field should be present here.
       - key: ATHENA_CLIENT_ID
-        value: YOUR_ATHENA_CLIENT_ID_HERE
+        sync: false
       - key: ATHENA_CLIENT_SECRET
-        value: YOUR_ATHENA_CLIENT_SECRET_HERE
         sync: false
