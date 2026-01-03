@@ -2,21 +2,21 @@ import os
 from django.core.management.base import BaseCommand
 from analytics.views import _sync_departments
 from analytics.models import Practice
-from analytics.athena_client import get_token # Import get_token
+from analytics.athena_client import get_token
 
 class Command(BaseCommand):
     help = 'Runs the Athena department synchronization for a given practice.'
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--practice_id', 
-            type=int, 
+            '--athena_id', 
+            type=str, 
             required=True, 
-            help='The local ID of the practice to sync departments for.'
+            help='The Athena Practice ID of the practice to sync departments for.'
         )
 
     def handle(self, *args, **options):
-        practice_id = options['practice_id']
+        athena_id = options['athena_id']
         
         # Get credentials from environment variables
         client_id = os.environ.get('ATHENA_CLIENT_ID')
@@ -29,16 +29,15 @@ class Command(BaseCommand):
             return
 
         try:
-            practice = Practice.objects.get(id=practice_id)
-            athena_practice_id = practice.athena_practice_id
+            practice = Practice.objects.get(athena_practice_id=athena_id)
         except Practice.DoesNotExist:
             self.stdout.write(self.style.ERROR(
-                f"Practice with local ID {practice_id} not found."
+                f"Practice with Athena ID {athena_id} not found in the database."
             ))
             return
 
         self.stdout.write(self.style.SUCCESS(
-            f"Starting Athena department sync for practice: '{practice.name}' (ID: {practice_id})"
+            f"Starting Athena department sync for practice: '{practice.name}' (Athena ID: {athena_id})"
         ))
 
         token = get_token()
@@ -48,8 +47,8 @@ class Command(BaseCommand):
         
         headers = {"Authorization": f"Bearer {token}"}
 
-        # _sync_departments is a generator, so we loop through it
-        for message in _sync_departments(athena_practice_id, headers, None): # Pass None for debug_file
+        # The underlying sync function expects the Athena Practice ID directly
+        for message in _sync_departments(athena_id, headers, None): # Pass None for debug_file
             self.stdout.write(message)
             
         self.stdout.write(self.style.SUCCESS("Athena department sync process finished."))

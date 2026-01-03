@@ -9,17 +9,16 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--practice_id', 
-            type=int, 
+            '--athena_id', 
+            type=str, 
             required=True, 
-            help='The local ID of the practice to sync.'
+            help='The Athena Practice ID of the practice to sync.'
         )
 
     def handle(self, *args, **options):
-        practice_id = options['practice_id']
+        athena_id = options['athena_id']
         
         # Get credentials from environment variables
-        # These are the same variables used by the web application
         client_id = os.environ.get('ATHENA_CLIENT_ID')
         client_secret = os.environ.get('ATHENA_CLIENT_SECRET')
 
@@ -30,19 +29,18 @@ class Command(BaseCommand):
             return
 
         try:
-            practice = Practice.objects.get(id=practice_id)
+            practice = Practice.objects.get(athena_practice_id=athena_id)
             self.stdout.write(self.style.SUCCESS(
-                f"Starting full Athena sync for practice: '{practice.name}' (ID: {practice_id})"
+                f"Starting full Athena sync for practice: '{practice.name}' (Athena ID: {athena_id})"
             ))
         except Practice.DoesNotExist:
             self.stdout.write(self.style.ERROR(
-                f"Practice with local ID {practice_id} not found."
+                f"Practice with Athena ID {athena_id} not found in the database."
             ))
             return
 
-        # The run_full_athena_sync function from views.py is a generator.
-        # We loop through it and print each message it yields.
-        for message in run_full_athena_sync(practice_id, client_id, client_secret):
+        # The underlying sync function expects the local database ID (pk), so we pass practice.id
+        for message in run_full_athena_sync(practice.id, client_id, client_secret):
             self.stdout.write(message)
             
         self.stdout.write(self.style.SUCCESS("Athena sync process finished."))
