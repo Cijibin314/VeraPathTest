@@ -46,8 +46,8 @@ rate_limiter = RateLimiter(calls=14, period=1)
 # Populate them in your .env file.
 CLIENT_ID = os.environ.get("ATHENA_CLIENT_ID", "your_client_id")
 CLIENT_SECRET = os.environ.get("ATHENA_CLIENT_SECRET", "your_client_secret")
-#TOKEN_URL = "https://api.preview.platform.athenahealth.com/oauth2/token"
-TOKEN_URL = "https://api.preview.platform.athenahealth.com/oauth2/v1/token" 
+# TOKEN_URL is now configurable via environment variable to support different environments (preview vs. production)
+TOKEN_URL = os.environ.get("ATHENA_TOKEN_URL", "https://api.preview.platform.athenahealth.com/oauth2/v1/token") 
 def get_token():
     """
     Obtain an OAuth 2.0 token using client credentials.
@@ -94,7 +94,8 @@ def get(endpoint, practice_id, token, params=None, retry_on_auth_error=True, ret
     """
     MAX_RETRIES = 3
     rate_limiter.acquire()
-    base_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}" 
+    base_url_from_env = os.environ.get("ATHENA_BASE_URL", "https://api.preview.platform.athenahealth.com")
+    base_url = f"{base_url_from_env.rstrip('/')}/v1/{practice_id}" 
     url = f"{base_url}/{endpoint.lstrip('/')}"
     headers = {"Authorization": f"Bearer {token}"}
     

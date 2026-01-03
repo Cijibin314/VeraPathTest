@@ -1011,6 +1011,7 @@ def search_appointment_reasons_ajax(request):
 def create_referral_order_ajax(request):
     if request.method == 'POST':
         try:
+            base_url = os.environ.get("ATHENA_BASE_URL", "https://api.preview.platform.athenahealth.com").rstrip('/')
             user_practice = request.user.userprofile.practice
             if not user_practice or not user_practice.athena_practice_id:
                 logging.error("User has no practice ID configured.")
@@ -1040,7 +1041,7 @@ def create_referral_order_ajax(request):
                 'patientid': patient_id,
                 'departmentid': department_id,
             }
-            encounter_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/{patient_id}/ordergroups"
+            encounter_url = f"{base_url}/v1/{practice_id}/chart/{patient_id}/ordergroups"
             logging.info(f"Creating encounter with URL: {encounter_url} and payload: {order_group_payload}")
             order_group_response = requests.post(encounter_url, headers=headers, data=urlencode(order_group_payload))
             
@@ -1060,7 +1061,7 @@ def create_referral_order_ajax(request):
             # Step 2: Add a diagnosis to the encounter
             diagnosis_code = '3457005'
             diagnosis_payload = {'snomedcode': diagnosis_code}
-            diagnosis_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/encounter/{encounter_id}/diagnoses"
+            diagnosis_url = f"{base_url}/v1/{practice_id}/chart/encounter/{encounter_id}/diagnoses"
             diagnosis_headers = headers # Re-use the same headers
             logging.info(f"Adding diagnosis to encounter with URL: {diagnosis_url} and payload: {diagnosis_payload}")
             diagnosis_response = requests.post(diagnosis_url, headers=diagnosis_headers, data=urlencode(diagnosis_payload))
@@ -1075,7 +1076,7 @@ def create_referral_order_ajax(request):
 
             # Step 3: Verify the diagnosis was added
             time.sleep(3) # Wait for Athena to process the diagnosis
-            verify_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/encounter/{encounter_id}/diagnoses"
+            verify_url = f"{base_url}/v1/{practice_id}/chart/encounter/{encounter_id}/diagnoses"
             logging.info(f"Verifying diagnosis with URL: {verify_url}")
             verify_response = requests.get(verify_url, headers=headers)
             verify_response.raise_for_status()
@@ -1116,7 +1117,7 @@ def create_referral_order_ajax(request):
                 'notetopatient': data.get('notetopatient', ''),
             }
             
-            referral_url = f"https://api.preview.platform.athenahealth.com/v1/{practice_id}/chart/encounter/{encounter_id}/orders/referral"
+            referral_url = f"{base_url}/v1/{practice_id}/chart/encounter/{encounter_id}/orders/referral"
             referral_headers = headers # Re-use the same headers
             logging.info(f"Creating referral order document with URL: {referral_url} and payload: {referral_order_payload}")
             response = requests.post(referral_url, headers=referral_headers, data=urlencode(referral_order_payload))
@@ -1733,7 +1734,8 @@ def _sync_departments(athena_practice_id, headers, debug_file):
     if debug_file:
         debug_file.write("\nFetching all departments for practice...\n")
     try:
-        departments_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/departments?limit=1000"
+        base_url = os.environ.get("ATHENA_BASE_URL", "https://api.preview.platform.athenahealth.com").rstrip('/')
+        departments_url = f"{base_url}/v1/{athena_practice_id}/departments?limit=1000"
         response = requests.get(departments_url, headers=headers)
         response.raise_for_status()
         departments_data = response.json().get("departments", [])
@@ -1765,7 +1767,8 @@ def _sync_providers(athena_practice_id, headers, practice, debug_file):
     if debug_file:
         debug_file.write("\nStep 2: Syncing Providers...\n")
     try:
-        provider_url = f"https://api.preview.platform.athenahealth.com/v1/{athena_practice_id}/providers?limit=1000"
+        base_url = os.environ.get("ATHENA_BASE_URL", "https://api.preview.platform.athenahealth.com").rstrip('/')
+        provider_url = f"{base_url}/v1/{athena_practice_id}/providers?limit=1000"
         response = requests.get(provider_url, headers=headers)
         response.raise_for_status()
         providers_data = response.json().get("providers", [])
