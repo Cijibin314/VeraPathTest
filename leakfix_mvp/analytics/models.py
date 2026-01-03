@@ -93,6 +93,10 @@ class Patient(models.Model):
     def __str__(self) -> str:
         return f"Patient {self.pseudonym[:8]}"
 
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+
 
 class Referral(models.Model):
     class Status(models.TextChoices):

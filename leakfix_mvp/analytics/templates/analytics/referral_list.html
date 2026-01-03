@@ -36,7 +36,7 @@
                     <tbody>
                         {% for referral in page_obj %}
                         <tr>
-                            <td>{{ referral.patient.first_name }} {{ referral.patient.last_name }} ({{ referral.patient.original_id }})</td>
+                            <td>{{ referral.patient.full_name }} ({{ referral.patient.original_id }})</td>
                             <td>{% if referral.provider %}{{ referral.provider }}{% endif %}</td>
                             <td>{{ referral.specialty }}</td>
                             <td>{{ referral.referral_date }}</td>
