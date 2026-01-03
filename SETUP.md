@@ -52,12 +52,12 @@ The application requires an environment file (`.env`) to store secrets like the 
 Now, you can build the Docker image and start the application using a single command from the project's root directory (where `docker-compose.yml` is located).
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 > **Note for Linux Users:** If you get a "permission denied" error, you may need to run the command with `sudo`:
 > ```bash
-> sudo docker-compose up --build
+> sudo docker compose up --build
 > ```
 > To avoid using `sudo` every time, you can add your user to the `docker` group. (See Docker's official post-installation steps for Linux).
 
