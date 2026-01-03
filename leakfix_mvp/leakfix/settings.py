@@ -14,7 +14,6 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 from pathlib import Path
 import environ
-import urllib.parse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -99,29 +98,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'leakfix.wsgi.application'
 
-# Database Configuration
-database_url = env('DATABASE_URL')
-if 'postgresql' in database_url:
-    url = urllib.parse.urlparse(database_url)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': url.path[1:],
-            'USER': url.username,
-            'PASSWORD': url.password,
-            'HOST': url.hostname,
-            'PORT': url.port,
-            'OPTIONS': {'sslmode': 'require'},
-        }
-    }
-else:
-    # Fallback to SQLite if DATABASE_URL is not a postgresql URL
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+# Database
+# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+#
+# Uses dj-database-url to parse the DATABASE_URL environment variable.
+# See https://github.com/jazzband/dj-database-url
+DATABASES = {
+    'default': env.db(),
+}
+
+# Enforce SSL for PostgreSQL connections in production.
+if PRODUCTION and DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
