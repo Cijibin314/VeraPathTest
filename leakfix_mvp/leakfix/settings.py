@@ -108,8 +108,13 @@ DATABASES = {
 }
 
 # Enforce SSL for PostgreSQL connections in production.
-if PRODUCTION and DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
-    DATABASES['default']['OPTIONS'] = {'sslmode': 'require'}
+if (
+    PRODUCTION
+    and DATABASES.get("default", {}).get("ENGINE")
+    == "django.db.backends.postgresql"
+):
+    DATABASES["default"].setdefault("OPTIONS", {})["sslmode"] = "require"
+
 
 
 # Password validation
