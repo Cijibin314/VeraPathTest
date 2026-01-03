@@ -1,0 +1,62 @@
+# Blueprint for deploying the VeraPath application on Render.
+# This file defines the infrastructure for the Django web service.
+# It is configured to use an external PostgreSQL database (e.g., Neon).
+#
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  # ------------------
+  # Django Web Service
+  # ------------------
+  - name: verapath-web
+    type: web
+    plan: free
+    # Specifies the runtime environment.
+    env: python
+    # Specifies the region for deployment.
+    region: oregon
+    # Tells Render to use the Python 3.11 runtime.
+    pythonVersion: "3.11"
+    # Command to build the application. This installs dependencies, collects
+    # static files, and applies database migrations.
+    # The '&&' operator ensures commands run sequentially.
+    buildCommand: >
+      pip install -r requirements.txt &&
+      python leakfix_mvp/manage.py collectstatic --no-input &&
+      python leakfix_mvp/manage.py migrate
+    # Command to start the application using the Gunicorn web server.
+    # The --chdir flag changes the directory to 'leakfix_mvp' before running,
+    # so Gunicorn can find the 'leakfix.wsgi' module.
+    startCommand: "gunicorn leakfix.wsgi --chdir leakfix_mvp"
+    # Defines the environment variables for the service.
+    envVars:
+      # The PYTHONUNBUFFERED variable ensures that Python output is sent
+      # straight to the terminal without being buffered first.
+      - key: PYTHONUNBUFFERED
+        value: 1
+      # Enables production-specific security settings in Django.
+      - key: PRODUCTION
+        value: True
+      # Generates a secure, random value for the Django SECRET_KEY.
+      # This is safer than hardcoding a key.
+      - key: SECRET_KEY
+        generateValue: true
+      # Generates a secure, random value for the FIELD_ENCRYPTION_KEY.
+      - key: FIELD_ENCRYPTION_KEY
+        generateValue: true
+      # NOTE: The DATABASE_URL must be set as a secret in the Render Dashboard.
+      # Example: postgresql://user:password@host/database
+
+# Environment groups allow you to share environment variables
+# across multiple services. This is useful for settings that are
+# the same for both your web service and any potential background workers.
+envVarGroups:
+  - name: verapath-env
+    envVars:
+      # You will need to update this with your Athena API credentials.
+      # 'sync: false' prevents the value from being stored in the YAML file.
+      - key: ATHENA_CLIENT_ID
+        value: YOUR_ATHENA_CLIENT_ID_HERE
+      - key: ATHENA_CLIENT_SECRET
+        value: YOUR_ATHENA_CLIENT_SECRET_HERE
+        sync: false
