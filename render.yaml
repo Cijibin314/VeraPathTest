@@ -15,8 +15,6 @@ services:
     env: python
     # Specifies the region for deployment.
     region: oregon
-    # Tells Render to use the Python 3.11 runtime.
-    pythonVersion: "3.11"
     # Command to build the application. This installs dependencies, collects
     # static files, and applies database migrations.
     # The '&&' operator ensures commands run sequentially.
@@ -30,6 +28,9 @@ services:
     startCommand: "gunicorn leakfix.wsgi --chdir leakfix_mvp"
     # Defines the environment variables for the service.
     envVars:
+      # Explicitly sets the Python version for the service.
+      - key: PYTHON_VERSION
+        value: 3.11.6
       # The PYTHONUNBUFFERED variable ensures that Python output is sent
       # straight to the terminal without being buffered first.
       - key: PYTHONUNBUFFERED
