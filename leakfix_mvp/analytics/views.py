@@ -1862,6 +1862,8 @@ def _sync_patients(athena_practice_id, token, debug_file):
     task_name = "run_sync_patients"
     try:
         department_ids = list(Department.objects.values_list('department_id', flat=True))
+        department_ids = ['-1'] + department_ids
+        yield f"Departments: {department_ids}"
         if not department_ids:
             yield "WARNING: No departments found in the database for patient sync. Please run department sync first."
             return
