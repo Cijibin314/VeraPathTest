@@ -1857,6 +1857,8 @@ def _sync_providers(athena_practice_id, headers, practice, debug_file):
         if debug_file:
             debug_file.write(msg + "\n")
         raise # Re-raise the exception so the caller can handle it
+
+#For the future: Good test case for currnet bug is dep 142
 def _sync_patients(athena_practice_id, token, debug_file):
     from .models import ImportLog, Patient, Department
     task_name = "run_sync_patients"
